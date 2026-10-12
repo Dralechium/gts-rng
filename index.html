@@ -261,17 +261,6 @@ button {
   box-shadow: 0 0 16px #168CF014;
 }
 
-.nav button.active::after {
-  content: "";
-  position: absolute;
-  height: 2px;
-  bottom: -1px;
-  left: 12px;
-  right: 12px;
-  border-radius: 5px;
-  background: var(--gradient);
-}
-
 /* MAIN CONTENT */
 
 main {
@@ -358,8 +347,9 @@ main {
 }
 
 #odds {
-  color: var(--muted);
-  font-size: 13px;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 800;
 }
 
 #rollButton {
@@ -736,7 +726,6 @@ main {
 
     <div class="headerTitle">
       <h1>GTS RNG</h1>
-      <div class="headerSubtitle">ROLL YOUR LUCK</div>
     </div>
 
     <div id="accountBar">
@@ -915,10 +904,8 @@ function updateUI() {
     ? `${best.name} (1/${best.odds})`
     : "None";
 
-  $("accountText").innerHTML = currentUser
-    ? `<span class="accountIndicator"></span>${escapeHTML(
-        profile?.username || currentUser.email || "Player"
-      )}`
+  $("accountText").textContent = currentUser
+    ? profile?.username || currentUser.email || "Player"
     : "Not logged in";
 }
 

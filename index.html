@@ -5,210 +5,397 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GTS RNG</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&display=swap" rel="stylesheet">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
 
 <style>
 :root {
   --blue: #168CF0;
   --green: #83B66B;
   --yellow: #F5E500;
-  --bg: #0A1020;
-  --panel: #111B30;
-  --border: #253958;
-  --muted: #9BAAC0;
+  --bg: #080E1B;
+  --panel: #101A2D;
+  --panel-light: #15233A;
+  --border: #293950;
+  --muted: #A2B0C5;
+
+  --gradient: linear-gradient(
+    110deg,
+    var(--blue) 0%,
+    var(--green) 52%,
+    var(--yellow) 100%
+  );
+
+  --gradient-soft: linear-gradient(
+    110deg,
+    #168CF01C 0%,
+    #83B66B1C 52%,
+    #F5E5001C 100%
+  );
+
+  --gradient-glow:
+    0 0 18px #168CF01A,
+    0 0 24px #83B66B12,
+    0 0 30px #F5E5000D;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+}
+
+html {
+  min-height: 100%;
+  background: var(--bg);
+}
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
-  color: white;
-  font-family: Orbitron, Arial, sans-serif;
+  color: #FFFFFF;
+  background:
+    radial-gradient(ellipse at 0% 0%, #168CF016 0%, transparent 42%),
+    radial-gradient(ellipse at 100% 0%, #F5E5000C 0%, transparent 38%),
+    radial-gradient(ellipse at 50% 100%, #83B66B0B 0%, transparent 48%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
-button, input { font: inherit; }
+button,
+input {
+  font: inherit;
+}
 
 button {
   cursor: pointer;
-  transition: transform .2s, box-shadow .2s, background .2s;
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease,
+    background .2s ease,
+    opacity .2s ease;
 }
 
-button:hover { transform: translateY(-2px); }
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* HEADER */
 
 .header {
-  padding: 20px;
+  position: relative;
+  padding: 18px 24px;
+  background:
+    linear-gradient(110deg, #168CF00A, #83B66B08, #F5E50008),
+    #0B1323;
+  border-bottom: 1px solid transparent;
+  border-image: var(--gradient) 1;
+}
+
+.headerLayout {
+  width: min(1500px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+}
+
+.headerStats {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.headerStat {
+  min-width: 105px;
+  padding: 9px 13px;
+  background: #111C2F;
+  border: 1px solid #293950;
+  border-radius: 10px;
+}
+
+.headerStatLabel {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.headerStatValue {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+  color: #FFFFFF;
+  overflow-wrap: anywhere;
+}
+
+.headerTitle {
   text-align: center;
-  background: #0D1629;
-  border-bottom: 1px solid var(--border);
+  min-width: 0;
 }
 
 .header h1 {
   margin: 0;
-  color: var(--blue);
-  text-shadow: 0 0 18px #168CF077;
-  font-size: clamp(25px, 5vw, 38px);
+  font-size: clamp(25px, 3vw, 38px);
+  font-weight: 900;
+  letter-spacing: 1px;
+  background: var(--gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 12px #168CF02A);
+  white-space: nowrap;
+}
+
+.headerSubtitle {
+  margin-top: 5px;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
 }
 
 #accountBar {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
-  gap: 12px;
   flex-wrap: wrap;
-  margin-top: 15px;
+  gap: 10px;
+  min-width: 0;
 }
 
-button, .nav button {
+#accountText {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #FFFFFF;
+}
+
+.accountIndicator {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 9px #83B66B66;
+}
+
+/* BUTTONS */
+
+button {
   border: 0;
   border-radius: 9px;
   padding: 11px 16px;
 }
 
 .primary {
-  background: var(--blue);
-  color: white;
-  box-shadow: 0 0 14px #168CF044;
+  color: #07111D;
+  background: var(--gradient);
+  box-shadow: var(--gradient-glow);
+}
+
+.primary:hover:not(:disabled) {
+  box-shadow:
+    0 0 18px #168CF055,
+    0 0 25px #83B66B22,
+    0 0 28px #F5E50022;
 }
 
 .secondary {
-  background: #26344B;
-  color: white;
+  color: #FFFFFF;
+  background: #18243A;
+  border: 1px solid #34445B;
 }
+
+.secondary:hover:not(:disabled) {
+  background: var(--gradient-soft);
+  border-color: #6C9E9A;
+}
+
+#logoutButton {
+  padding: 10px 15px;
+  color: #07111D;
+  font-size: 12px;
+}
+
+/* NAVIGATION */
 
 .nav {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  padding: 20px 10px;
+  align-items: center;
+  gap: 9px;
+  padding: 20px 12px;
 }
 
 .nav button {
-  background: transparent;
-  color: white;
-  border: 1px solid var(--border);
+  position: relative;
+  padding: 11px 20px;
+  color: #C3CDDC;
+  background: #101A2D;
+  border: 1px solid #293950;
 }
 
 .nav button.active {
-  background: #168CF022;
-  border-color: var(--blue);
-  color: var(--blue);
+  color: #FFFFFF;
+  background: var(--gradient-soft);
+  border-color: #5C9BB4;
+  box-shadow: 0 0 16px #168CF014;
 }
+
+.nav button.active::after {
+  content: "";
+  position: absolute;
+  height: 2px;
+  bottom: -1px;
+  left: 12px;
+  right: 12px;
+  border-radius: 5px;
+  background: var(--gradient);
+}
+
+/* MAIN CONTENT */
 
 main {
-  width: min(1000px, 100%);
+  width: min(1100px, 100%);
   margin: auto;
-  padding: 10px 18px 40px;
+  padding: 10px 20px 45px;
 }
 
-.page { display: none; }
-.page.active { display: block; }
-
-.stats {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 25px;
+.page {
+  display: none;
 }
 
-.stat {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px;
-  flex: 1;
-  min-width: 150px;
-}
-
-.stat strong {
+.page.active {
   display: block;
-  margin-top: 8px;
-  color: var(--blue);
 }
 
-.roll-area { text-align: center; }
+.page h2 {
+  font-size: 21px;
+  margin: 12px 0 20px;
+  background: var(--gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* ROLL DISPLAY */
+
+.roll-area {
+  text-align: center;
+}
 
 #display {
-  width: min(360px, 100%);
-  min-height: 260px;
+  position: relative;
+  width: min(380px, 100%);
+  min-height: 275px;
   margin: 20px auto;
   padding: 25px 15px;
-  background: linear-gradient(145deg, #14213A, #0E1729);
-  border: 1px solid var(--border);
+  background:
+    linear-gradient(145deg, #15243B, #0D1628),
+    var(--panel);
+  border: 1px solid transparent;
   border-radius: 18px;
+  background-clip: padding-box;
+  outline: 1px solid #34465A;
+  outline-offset: -1px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  transition: .25s;
+  gap: 13px;
+  box-shadow: var(--gradient-glow);
+  transition: box-shadow .25s ease;
 }
 
-#display.rare {
-  border-color: var(--blue);
-  box-shadow: 0 0 22px #168CF044;
-}
-
-#display.epic {
-  border-color: #B66CFF;
-  box-shadow: 0 0 24px #B66CFF55;
-}
-
-#display.legendary {
-  border-color: var(--yellow);
-  box-shadow: 0 0 30px #F5E50055;
-}
-
+/* All rarity levels share the same palette. */
+#display.rare,
+#display.epic,
+#display.legendary,
 #display.mythic {
-  border-color: #FF704F;
-  box-shadow: 0 0 35px #FF704F66;
+  outline: 1px solid #6B9E9B;
+  box-shadow:
+    0 0 16px #168CF029,
+    0 0 24px #83B66B1A,
+    0 0 32px #F5E50013;
 }
 
-#display img {
-  width: 110px;
-  height: 110px;
+#resultImage {
+  width: 112px;
+  height: 112px;
   object-fit: cover;
   border-radius: 50%;
   background: #202D44;
+  border: 2px solid transparent;
+  outline: 2px solid #34465A;
+  box-shadow:
+    0 0 12px #168CF022,
+    0 0 16px #83B66B16;
 }
 
 #name {
   font-size: clamp(20px, 4vw, 28px);
-  font-weight: 800;
+  font-weight: 900;
   overflow-wrap: anywhere;
 }
 
-#odds { color: var(--muted); }
-
-#rollButton {
-  min-width: 210px;
-  padding: 17px 30px;
-  font-size: 20px;
-  font-weight: 800;
+#odds {
+  color: var(--muted);
+  font-size: 13px;
 }
 
-#autoButton { margin: 10px; }
+#rollButton {
+  min-width: 220px;
+  padding: 17px 30px;
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+#autoButton {
+  margin: 10px;
+}
 
 #status {
   min-height: 25px;
   margin: 15px 0;
-  color: var(--green);
+  color: #A6D3A1;
   overflow-wrap: anywhere;
+  font-size: 13px;
 }
+
+/* INVENTORY */
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
-  gap: 12px;
+  gap: 13px;
 }
 
 .card {
-  min-height: 170px;
+  min-height: 175px;
   text-align: center;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background:
+    linear-gradient(145deg, #142139, #0F192B);
+  border: 1px solid #293950;
   border-radius: 13px;
   padding: 14px 8px;
   display: flex;
@@ -217,16 +404,21 @@ main {
   justify-content: center;
   gap: 9px;
   overflow-wrap: anywhere;
-  transition: .2s;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
 }
 
-.card:hover { transform: scale(1.025); }
+.card:hover {
+  transform: translateY(-3px);
+  border-color: #659A9A;
+  box-shadow: var(--gradient-glow);
+}
 
 .card img {
   width: 65px;
   height: 65px;
   border-radius: 50%;
   object-fit: cover;
+  border: 1px solid #34465A;
 }
 
 .card.locked img {
@@ -238,53 +430,107 @@ main {
   font-size: 24px;
 }
 
-.card.rare { box-shadow: inset 0 0 15px #168CF033; }
-.card.epic { box-shadow: inset 0 0 15px #B66CFF44; }
-.card.legendary { box-shadow: inset 0 0 18px #F5E50033; }
-.card.mythic { box-shadow: inset 0 0 18px #FF704F44; }
+/* Rarity cards all use the same gradient theme. */
+.card.rare,
+.card.epic,
+.card.legendary,
+.card.mythic {
+  box-shadow:
+    inset 0 0 13px #168CF015,
+    inset 0 0 17px #83B66B0C,
+    inset 0 0 20px #F5E50008;
+}
+
+/* LEADERBOARD */
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--panel);
+  background: #101A2D;
+  border: 1px solid #293950;
   border-radius: 12px;
   overflow: hidden;
 }
 
-.table th, .table td {
+.table th,
+.table td {
   padding: 14px 8px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #293950;
   text-align: center;
   overflow-wrap: anywhere;
 }
 
-.table th { color: var(--blue); }
-
-#authPanel {
-  max-width: 380px;
-  margin: 20px auto;
-  padding: 22px;
-  background: var(--panel);
-  border: 1px solid var(--blue);
-  border-radius: 14px;
+.table th {
+  color: #A9CBB1;
+  background: var(--gradient-soft);
+  font-size: 12px;
 }
 
-#authPanel h2 { color: var(--blue); }
+.table tbody tr:hover {
+  background: #168CF00B;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* AUTHENTICATION */
+
+#authPanel {
+  width: min(400px, calc(100% - 32px));
+  margin: 35px auto;
+  padding: 24px;
+  background:
+    linear-gradient(145deg, #142139, #0E1728);
+  border: 1px solid #3B5969;
+  border-radius: 16px;
+  box-shadow: var(--gradient-glow);
+}
+
+#authPanel h2 {
+  margin-top: 0;
+  font-size: 23px;
+  background: var(--gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
 
 #authPanel input {
   display: block;
   width: 100%;
-  margin: 10px 0;
-  padding: 12px;
-  color: white;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  margin: 12px 0;
+  padding: 13px;
+  color: #FFFFFF;
+  background: #0A1221;
+  border: 1px solid #34445B;
   border-radius: 8px;
+  outline: none;
 }
 
 #authPanel input:focus {
-  outline: 1px solid var(--blue);
+  border-color: #659A9A;
+  box-shadow: 0 0 10px #168CF018;
 }
+
+#authPanel input::placeholder {
+  color: #8493A9;
+}
+
+#submitAuth,
+#switchAuth {
+  width: 100%;
+  margin-top: 9px;
+}
+
+#authMessage {
+  overflow-wrap: anywhere;
+  color: #C7D4E6;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* CUTSCENE */
 
 #cutscene {
   position: fixed;
@@ -292,7 +538,12 @@ main {
   z-index: 10;
   pointer-events: none;
   opacity: 0;
-  background: radial-gradient(circle, #F5E500AA, #0A1020 70%);
+  background:
+    radial-gradient(circle,
+      #F5E50055 0%,
+      #83B66B35 25%,
+      #168CF044 45%,
+      #0A1020 75%);
 }
 
 #cutscene.play {
@@ -300,10 +551,22 @@ main {
 }
 
 @keyframes burst {
-  0% { opacity: 0; transform: scale(.3); }
-  20% { opacity: 1; transform: scale(.7); }
-  70% { opacity: .85; transform: scale(1.5); }
-  100% { opacity: 0; transform: scale(2.5); }
+  0% {
+    opacity: 0;
+    transform: scale(.3);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(.7);
+  }
+  70% {
+    opacity: .85;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.5);
+  }
 }
 
 #display.rolling {
@@ -311,16 +574,144 @@ main {
 }
 
 @keyframes flicker {
-  from { transform: translateX(-2px); filter: brightness(1.1); }
-  to { transform: translateX(2px); filter: brightness(.75); }
+  from {
+    transform: translateX(-2px);
+    filter: brightness(1.1);
+  }
+  to {
+    transform: translateX(2px);
+    filter: brightness(.75);
+  }
 }
 
-.hidden { display: none !important; }
+/* RESPONSIVE LAYOUT */
 
-@media(max-width: 520px) {
-  .nav { gap: 5px; }
-  .nav button { padding: 10px 9px; font-size: 12px; }
-  .table th, .table td { padding: 10px 4px; font-size: 11px; }
+@media (max-width: 850px) {
+  .header {
+    padding: 16px;
+  }
+
+  .headerLayout {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 15px;
+  }
+
+  .headerTitle {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .headerStats {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  #accountBar {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .headerStat {
+    min-width: 0;
+    padding: 8px 10px;
+  }
+
+  .headerStatValue {
+    font-size: 11px;
+  }
+
+  #accountText {
+    max-width: 140px;
+  }
+}
+
+@media (max-width: 520px) {
+  .header {
+    padding: 14px 10px;
+  }
+
+  .headerLayout {
+    gap: 12px 6px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+  }
+
+  .headerSubtitle {
+    letter-spacing: 2px;
+  }
+
+  .headerStats {
+    gap: 5px;
+  }
+
+  .headerStat {
+    padding: 7px;
+    border-radius: 8px;
+  }
+
+  .headerStatLabel {
+    font-size: 8px;
+    letter-spacing: .4px;
+  }
+
+  .headerStatValue {
+    font-size: 10px;
+  }
+
+  #accountBar {
+    gap: 6px;
+  }
+
+  #accountText {
+    max-width: 110px;
+    font-size: 10px;
+  }
+
+  #logoutButton {
+    padding: 8px 9px;
+    font-size: 10px;
+  }
+
+  .nav {
+    gap: 5px;
+    padding: 16px 5px;
+  }
+
+  .nav button {
+    padding: 10px 9px;
+    font-size: 11px;
+  }
+
+  main {
+    padding: 8px 12px 35px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+    gap: 9px;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 4px;
+    font-size: 10px;
+  }
+
+  #authPanel {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }
 </style>
 </head>
@@ -329,20 +720,61 @@ main {
 <div id="cutscene"></div>
 
 <header class="header">
-  <h1>GTS RNG</h1>
-  <div id="accountBar">
-    <span id="accountText">Not logged in</span>
-    <button id="logoutButton" class="secondary hidden">Logout</button>
+  <div class="headerLayout">
+
+    <div id="headerStats" class="headerStats hidden">
+      <div class="headerStat">
+        <span class="headerStatLabel">Rolls</span>
+        <span id="rollCount" class="headerStatValue">0</span>
+      </div>
+
+      <div class="headerStat">
+        <span class="headerStatLabel">Best Rarity</span>
+        <span id="bestCount" class="headerStatValue">None</span>
+      </div>
+    </div>
+
+    <div class="headerTitle">
+      <h1>GTS RNG</h1>
+      <div class="headerSubtitle">ROLL YOUR LUCK</div>
+    </div>
+
+    <div id="accountBar">
+      <span id="accountText">Not logged in</span>
+      <button id="logoutButton" class="primary hidden">Logout</button>
+    </div>
+
   </div>
 </header>
 
 <section id="authPanel">
   <h2 id="authTitle">Login</h2>
-  <input id="usernameInput" placeholder="Username (signup only)" maxlength="20" class="hidden">
-  <input id="emailInput" type="email" placeholder="Email" autocomplete="email">
-  <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password">
+
+  <input
+    id="usernameInput"
+    placeholder="Username (signup only)"
+    maxlength="20"
+    autocomplete="username"
+    class="hidden"
+  >
+
+  <input
+    id="emailInput"
+    type="email"
+    placeholder="Email"
+    autocomplete="email"
+  >
+
+  <input
+    id="passwordInput"
+    type="password"
+    placeholder="Password"
+    autocomplete="current-password"
+  >
+
   <button id="submitAuth" class="primary">Login</button>
   <button id="switchAuth" class="secondary">Need an account? Sign up</button>
+
   <p id="authMessage" role="status"></p>
 </section>
 
@@ -354,18 +786,19 @@ main {
   </nav>
 
   <main>
-    <section class="stats">
-      <div class="stat">Rolls<strong id="rollCount">0</strong></div>
-      <div class="stat">Best rarity<strong id="bestCount">None</strong></div>
-    </section>
-
     <section id="rollPage" class="page active">
       <div class="roll-area">
         <div id="display">
-          <img id="resultImage" alt="Rolled member" src="https://placehold.co/120x120/111B30/168CF0?text=GTS">
+          <img
+            id="resultImage"
+            alt="Rolled member"
+            src="https://placehold.co/120x120/111B30/168CF0?text=GTS"
+          >
+
           <div id="name">Ready to roll?</div>
           <div id="odds">Your next result awaits</div>
         </div>
+
         <button id="rollButton" class="primary">ROLL</button>
         <button id="autoButton" class="secondary">AUTOROLL: OFF</button>
         <p id="status" role="status"></p>
@@ -386,16 +819,28 @@ main {
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+
 import {
-  getAuth, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, signOut, onAuthStateChanged
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
 import {
-  getFirestore, doc, getDoc, setDoc, getDocs,
-  collection, serverTimestamp, query, orderBy, limit
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  getDocs,
+  collection,
+  serverTimestamp,
+  query,
+  orderBy,
+  limit
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
-// REPLACE these values with your Firebase web app configuration.
 const firebaseConfig = {
   apiKey: "AIzaSyAixhayZ7pgRu-cSzJsrEN7KPF4SoZpP6k",
   authDomain: "gts-rng.firebaseapp.com",
@@ -407,16 +852,37 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Replace these four placeholders with the real GTS members.
+// Replace these placeholders with the actual GTS members later.
 // Odds are denominators: 2 means 1 in 2, 1000 means 1 in 1000.
 const members = [
-  { id: "memberA", name: "Member One", odds: 2, image: "https://placehold.co/120x120/111B30/168CF0?text=A" },
-  { id: "memberB", name: "Member Two", odds: 16, image: "https://placehold.co/120x120/111B30/83B66B?text=B" },
-  { id: "memberC", name: "Member Three", odds: 128, image: "https://placehold.co/120x120/111B30/F5E500?text=C" },
-  { id: "memberD", name: "Member Four", odds: 1000, image: "https://placehold.co/120x120/111B30/F5E500?text=D" }
+  {
+    id: "memberA",
+    name: "Member One",
+    odds: 2,
+    image: "https://placehold.co/120x120/111B30/168CF0?text=A"
+  },
+  {
+    id: "memberB",
+    name: "Member Two",
+    odds: 16,
+    image: "https://placehold.co/120x120/111B30/168CF0?text=B"
+  },
+  {
+    id: "memberC",
+    name: "Member Three",
+    odds: 128,
+    image: "https://placehold.co/120x120/111B30/168CF0?text=C"
+  },
+  {
+    id: "memberD",
+    name: "Member Four",
+    odds: 1000,
+    image: "https://placehold.co/120x120/111B30/168CF0?text=D"
+  }
 ];
 
 const $ = id => document.getElementById(id);
+
 let currentUser = null;
 let profile = null;
 let signupMode = false;
@@ -434,6 +900,7 @@ function rarity(odds) {
 
 function bestMember() {
   if (!profile) return null;
+
   return members
     .filter(m => (profile.inventory?.[m.id] || 0) > 0)
     .sort((a, b) => b.odds - a.odds)[0] || null;
@@ -441,17 +908,27 @@ function bestMember() {
 
 function updateUI() {
   $("rollCount").textContent = profile?.rolls || 0;
+
   const best = bestMember();
-  $("bestCount").textContent = best ? `${best.name} (1/${best.odds})` : "None";
-  $("accountText").textContent = profile?.username || currentUser?.email || "Not logged in";
+
+  $("bestCount").textContent = best
+    ? `${best.name} (1/${best.odds})`
+    : "None";
+
+  $("accountText").innerHTML = currentUser
+    ? `<span class="accountIndicator"></span>${escapeHTML(
+        profile?.username || currentUser.email || "Player"
+      )}`
+    : "Not logged in";
 }
 
 function renderInventory() {
   $("inventory").innerHTML = members.map(m => {
     const count = profile?.inventory?.[m.id] || 0;
+
     return `<div class="card ${count ? rarity(m.odds) : "locked"}">
-      <img src="${m.image}" alt="" loading="lazy">
-      <strong>${count ? m.name : "???"}</strong>
+      <img src="${escapeHTML(m.image)}" alt="" loading="lazy">
+      <strong>${escapeHTML(count ? m.name : "???")}</strong>
       <span>${count ? `1 in ${m.odds}` : "Locked"}</span>
       <span>${count ? `Owned: ${count}` : "Discover this member"}</span>
     </div>`;
@@ -460,12 +937,15 @@ function renderInventory() {
 
 async function saveProfile() {
   if (!currentUser || !profile) return;
+
+  const best = bestMember();
+
   await setDoc(doc(db, "users", currentUser.uid), {
     username: profile.username,
     rolls: profile.rolls,
     inventory: profile.inventory,
-    bestName: bestMember()?.name || null,
-    bestOdds: bestMember()?.odds || 0,
+    bestName: best?.name || null,
+    bestOdds: best?.odds || 0,
     updatedAt: serverTimestamp()
   });
 }
@@ -474,10 +954,12 @@ function weightedPick() {
   // Relative weights make rarer cards less likely.
   const total = members.reduce((sum, m) => sum + 1 / m.odds, 0);
   let value = Math.random() * total;
+
   for (const m of members) {
-    value -= (1 / m.odds);
+    value -= 1 / m.odds;
     if (value <= 0) return m;
   }
+
   return members[0];
 }
 
@@ -498,6 +980,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function roll() {
   if (!currentUser || !profile || rolling) return;
+
   rolling = true;
   $("rollButton").disabled = true;
   $("display").classList.add("rolling");
@@ -511,69 +994,108 @@ async function roll() {
     while (performance.now() - start < duration) {
       const elapsed = performance.now() - start;
       const progress = elapsed / duration;
+
       if (elapsed >= nextChange) {
         showMember(members[Math.floor(Math.random() * members.length)]);
         nextChange = elapsed + 40 + progress * 180;
       }
+
       await wait(25);
     }
 
     const result = weightedPick();
+
     profile.rolls = (profile.rolls || 0) + 1;
     profile.inventory[result.id] = (profile.inventory[result.id] || 0) + 1;
+
     showMember(result);
     updateUI();
     renderInventory();
-    $("status").textContent = `You rolled ${result.name}! (1 in ${result.odds})`;
+
+    $("status").textContent =
+      `You rolled ${result.name}! (1 in ${result.odds})`;
+
     await saveProfile();
   } catch (error) {
     console.error(error);
-    $("status").textContent = "Save failed. Check your connection and Firebase rules.";
+    $("status").textContent =
+      "Save failed. Check your connection and Firebase rules.";
   } finally {
     $("display").classList.remove("rolling");
     rolling = false;
     $("rollButton").disabled = false;
-    if (autoRoll && currentUser) autoTimer = setTimeout(roll, 500);
+
+    if (autoRoll && currentUser) {
+      autoTimer = setTimeout(roll, 500);
+    }
   }
 }
 
 async function loadLeaderboard() {
   const target = $("leaderboard");
   target.textContent = "Loading leaderboard...";
+
   try {
-    const q = query(collection(db, "users"), orderBy("bestOdds", "desc"), limit(50));
+    const q = query(
+      collection(db, "users"),
+      orderBy("bestOdds", "desc"),
+      limit(50)
+    );
+
     const snapshot = await getDocs(q);
     const rows = snapshot.docs.map(d => d.data());
+
     target.innerHTML = `<table class="table">
-      <thead><tr><th>Rank</th><th>Username</th><th>Rolls</th><th>Best</th></tr></thead>
-      <tbody>${rows.map((u, i) => `<tr>
-        <td>${i + 1}</td>
-        <td>${escapeHTML(u.username || "Player")}</td>
-        <td>${Number(u.rolls) || 0}</td>
-        <td>${escapeHTML(u.bestName || "None")}</td>
-      </tr>`).join("")}</tbody>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Username</th>
+          <th>Rolls</th>
+          <th>Best</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((u, i) => `<tr>
+          <td>${i + 1}</td>
+          <td>${escapeHTML(u.username || "Player")}</td>
+          <td>${Number(u.rolls) || 0}</td>
+          <td>${escapeHTML(u.bestName || "None")}</td>
+        </tr>`).join("")}
+      </tbody>
     </table>`;
   } catch (error) {
     console.error(error);
-    target.textContent = "Could not load leaderboard. Check Firestore setup.";
+    target.textContent =
+      "Could not load leaderboard. Check Firestore setup.";
   }
 }
 
 function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;",
-    '"': "&quot;", "'": "&#39;"
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
   })[c]);
 }
 
 $("switchAuth").addEventListener("click", () => {
   signupMode = !signupMode;
+
   $("authTitle").textContent = signupMode ? "Sign Up" : "Login";
   $("submitAuth").textContent = signupMode ? "Create Account" : "Login";
+
   $("switchAuth").textContent = signupMode
-    ? "Already registered? Login" : "Need an account? Sign up";
+    ? "Already registered? Login"
+    : "Need an account? Sign up";
+
   $("usernameInput").classList.toggle("hidden", !signupMode);
-  $("passwordInput").autocomplete = signupMode ? "new-password" : "current-password";
+
+  $("passwordInput").autocomplete = signupMode
+    ? "new-password"
+    : "current-password";
+
   $("authMessage").textContent = "";
 });
 
@@ -588,10 +1110,17 @@ $("submitAuth").addEventListener("click", async () => {
   try {
     if (signupMode) {
       if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) {
-        throw new Error("Username must be 3–20 letters, numbers, or underscores.");
+        throw new Error(
+          "Username must be 3–20 letters, numbers, or underscores."
+        );
       }
 
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
       const newProfile = {
         username,
         rolls: 0,
@@ -600,10 +1129,15 @@ $("submitAuth").addEventListener("click", async () => {
         bestOdds: 0,
         updatedAt: serverTimestamp()
       };
-      await setDoc(doc(db, "users", credential.user.uid), newProfile);
+
+      await setDoc(
+        doc(db, "users", credential.user.uid),
+        newProfile
+      );
     } else {
       await signInWithEmailAndPassword(auth, email, password);
     }
+
     $("authMessage").textContent = "";
   } catch (error) {
     console.error(error);
@@ -617,25 +1151,43 @@ $("logoutButton").addEventListener("click", async () => {
   autoRoll = false;
   clearTimeout(autoTimer);
   $("autoButton").textContent = "AUTOROLL: OFF";
-  await signOut(auth);
+
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error(error);
+    $("authMessage").textContent = "Logout failed. Please try again.";
+  }
 });
 
 $("rollButton").addEventListener("click", roll);
 
 $("autoButton").addEventListener("click", () => {
   autoRoll = !autoRoll;
-  $("autoButton").textContent = `AUTOROLL: ${autoRoll ? "ON" : "OFF"}`;
+
+  $("autoButton").textContent =
+    `AUTOROLL: ${autoRoll ? "ON" : "OFF"}`;
+
   if (autoRoll && !rolling) roll();
   if (!autoRoll) clearTimeout(autoTimer);
 });
 
 document.querySelectorAll(".nav button").forEach(button => {
   button.addEventListener("click", async () => {
-    document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav button").forEach(b => {
+      b.classList.remove("active");
+    });
+
+    document.querySelectorAll(".page").forEach(p => {
+      p.classList.remove("active");
+    });
+
     button.classList.add("active");
     $(button.dataset.page).classList.add("active");
-    if (button.dataset.page === "leaderboardPage") await loadLeaderboard();
+
+    if (button.dataset.page === "leaderboardPage") {
+      await loadLeaderboard();
+    }
   });
 });
 
@@ -646,9 +1198,13 @@ onAuthStateChanged(auth, async user => {
   $("authPanel").classList.toggle("hidden", !!user);
   $("game").classList.toggle("hidden", !user);
   $("logoutButton").classList.toggle("hidden", !user);
+  $("headerStats").classList.toggle("hidden", !user);
 
   if (!user) {
     $("accountText").textContent = "Not logged in";
+    $("rollCount").textContent = "0";
+    $("bestCount").textContent = "None";
+    $("inventory").innerHTML = "";
     return;
   }
 
@@ -667,16 +1223,19 @@ onAuthStateChanged(auth, async user => {
         bestName: null,
         bestOdds: 0
       };
+
       await saveProfile();
     }
 
     profile.rolls = Number(profile.rolls) || 0;
     profile.inventory ||= {};
+
     updateUI();
     renderInventory();
     await loadLeaderboard();
   } catch (error) {
     console.error(error);
+
     $("authMessage").textContent =
       "Couldn't load your save. Check Firebase configuration and Firestore rules.";
   }

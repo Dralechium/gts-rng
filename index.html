@@ -586,17 +586,7 @@ main {
 /* CUTSCENE */
 
 #cutscene {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  pointer-events: none;
-  opacity: 0;
-  background:
-    radial-gradient(circle,
-      #F5E50055 0%,
-      #83B66B35 25%,
-      #168CF044 45%,
-      #0A1020 75%);
+  display: none !important;
 }
 
 #cutscene.play {
@@ -1057,6 +1047,36 @@ function showMember(m) {
   }
 }
 
+
+window.previewCard = function (cardName) {
+  if (typeof cardName !== "string" || !cardName.trim()) {
+    console.log('Usage: previewCard("theosGMD")');
+    return;
+  }
+
+  const member = members.find(
+    m => m.name.toLowerCase() === cardName.trim().toLowerCase()
+  );
+
+  if (!member) {
+    console.log(
+      `Card "${cardName}" not found. Available cards:`,
+      members.map(m => m.name)
+    );
+    return;
+  }
+
+  // Display the card only. Do not roll or modify saved data.
+  showMember(member);
+
+  $("status").textContent =
+    `Previewing ${member.name} (1 in ${member.odds}) — preview only`;
+
+  console.log(
+    `Previewing ${member.name} | 1 in ${member.odds} | Rarity: ${rarity(member.odds)}`
+  );
+};
+
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function roll() {
@@ -1087,7 +1107,8 @@ async function roll() {
     const result = weightedPick();
 
     profile.rolls = (profile.rolls || 0) + 1;
-    profile.inventory[result.id] = (profile.inventory[result.id] || 0) + 1;
+    profile.inventory[result.name] =
+      (profile.inventory[result.name] || 0) + 1;
 
     showMember(result);
     updateUI();

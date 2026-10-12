@@ -315,16 +315,48 @@ main {
   transition: box-shadow .25s ease;
 }
 
-/* All rarity levels share the same palette. */
-#display.rare,
-#display.epic,
-#display.legendary,
+/* Rarity-specific roll display effects */
+
+#display.common {
+  outline: 1px solid #888888;
+  background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+  box-shadow: 0 0 8px gray;
+}
+
+#display.uncommon {
+  outline: 1px solid #83B66B;
+  background: linear-gradient(145deg, #142319, #24432B);
+  box-shadow: 0 0 10px #83B66B;
+}
+
+#display.rare {
+  outline: 1px solid #4da6ff;
+  background: linear-gradient(145deg, #0b1a2a, #123a66);
+  box-shadow: 0 0 12px #4da6ff;
+}
+
+#display.legendary {
+  outline: 1px solid gold;
+  background: linear-gradient(145deg, #2a220b, #665012);
+  box-shadow: 0 0 25px gold;
+}
+
 #display.mythic {
-  outline: 1px solid #6B9E9B;
+  outline: 1px solid red;
+  background: linear-gradient(145deg, #2a0b0b, #661212);
+  box-shadow: 0 0 35px red;
+}
+
+#display.gts {
+  outline: 2px solid transparent;
+  background:
+    linear-gradient(145deg, #101A2D, #0b1425) padding-box,
+    linear-gradient(110deg, #168CF0, #83B66B, #F5E500) border-box;
+  border: 2px solid transparent;
   box-shadow:
-    0 0 16px #168CF029,
-    0 0 24px #83B66B1A,
-    0 0 32px #F5E50013;
+    0 0 22px #168CF0,
+    0 0 35px #83B66B88,
+    0 0 45px #F5E50055;
 }
 
 #resultImage {
@@ -420,15 +452,46 @@ main {
   font-size: 24px;
 }
 
-/* Rarity cards all use the same gradient theme. */
-.card.rare,
-.card.epic,
-.card.legendary,
+/* Rarity-specific inventory card effects */
+
+.card.common {
+  background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+  border-color: #888888;
+  box-shadow: 0 0 8px gray;
+}
+
+.card.uncommon {
+  background: linear-gradient(145deg, #142319, #24432B);
+  border-color: #83B66B;
+  box-shadow: 0 0 10px #83B66B88;
+}
+
+.card.rare {
+  background: linear-gradient(145deg, #0b1a2a, #123a66);
+  border-color: #4da6ff;
+  box-shadow: 0 0 12px #4da6ff88;
+}
+
+.card.legendary {
+  background: linear-gradient(145deg, #2a220b, #665012);
+  border-color: gold;
+  box-shadow: 0 0 18px #FFD70088;
+}
+
 .card.mythic {
+  background: linear-gradient(145deg, #2a0b0b, #661212);
+  border-color: red;
+  box-shadow: 0 0 22px #FF000088;
+}
+
+.card.gts {
+  background:
+    linear-gradient(145deg, #101A2D, #0b1425);
+  border: 1px solid #83B66B;
   box-shadow:
-    inset 0 0 13px #168CF015,
-    inset 0 0 17px #83B66B0C,
-    inset 0 0 20px #F5E50008;
+    0 0 12px #168CF0,
+    0 0 20px #83B66B88,
+    0 0 25px #F5E50044;
 }
 
 /* LEADERBOARD */
@@ -845,30 +908,11 @@ const db = getFirestore(app);
 // Replace these placeholders with the actual GTS members later.
 // Odds are denominators: 2 means 1 in 2, 1000 means 1 in 1000.
 const members = [
-  {
-    id: "memberA",
-    name: "Member One",
-    odds: 2,
-    image: "https://placehold.co/120x120/111B30/168CF0?text=A"
-  },
-  {
-    id: "memberB",
-    name: "Member Two",
-    odds: 16,
-    image: "https://placehold.co/120x120/111B30/168CF0?text=B"
-  },
-  {
-    id: "memberC",
-    name: "Member Three",
-    odds: 128,
-    image: "https://placehold.co/120x120/111B30/168CF0?text=C"
-  },
-  {
-    id: "memberD",
-    name: "Member Four",
-    odds: 1000,
-    image: "https://placehold.co/120x120/111B30/168CF0?text=D"
-  }
+  {id:"duckwithsunnies", name:"duckwithsunnies", odds:2, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/6ef3b0ef-bc0b-463d-a3d9-1f2a646a534f-profile_image-70x70.png"},
+  {id:"ChefGmd", name:"ChefGmd", odds:512, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/f6dfdec2-1ad0-4757-aa3c-c061cc5cab69-profile_image-70x70.png"},
+  {id:"midgatal", name:"midgatal", odds:750, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/bc185f86-30d2-4422-b547-5f4e3c504d54-profile_image-70x70.png"},
+  {id:"IVDrale", name:"IVDrale", odds:1000, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/6e71f426-65ca-4914-b6e8-0e5499f032cb-profile_image-70x70.png"},
+  {id:"theosGMD", name:"theosGMD", odds:100000, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/0ffc8233-6b32-411e-bfbd-4167c09cc2a2-profile_image-70x70.png"}
 ];
 
 const $ = id => document.getElementById(id);
@@ -929,11 +973,12 @@ function saveGuestProfile() {
 }
 
 function rarity(odds) {
-  if (odds <= 16) return "common";
-  if (odds <= 64) return "rare";
-  if (odds <= 500) return "epic";
-  if (odds <= 1024) return "legendary";
-  return "mythic";
+  if (odds >= 1000000) return "gts";
+  if (odds >= 100000) return "mythic";
+  if (odds >= 10000) return "legendary";
+  if (odds >= 1000) return "rare";
+  if (odds >= 100) return "uncommon";
+  return "common";
 }
 
 function bestMember() {
@@ -1004,7 +1049,7 @@ function showMember(m) {
   $("odds").textContent = `1 in ${m.odds}`;
   $("display").className = rarity(m.odds);
 
-  if (m.odds > 1024) {
+  if (m.odds >= 100000) {
     $("cutscene").classList.remove("play");
     void $("cutscene").offsetWidth;
     $("cutscene").classList.add("play");

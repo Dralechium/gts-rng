@@ -917,7 +917,6 @@ function renderInventory() {
       <img src="${escapeHTML(m.image)}" alt="" loading="lazy">
       <strong>${escapeHTML(count ? m.name : "???")}</strong>
       <span>${count ? `1 in ${m.odds}` : "Locked"}</span>
-      <span>${count ? `Owned: ${count}` : "Discover this member"}</span>
     </div>`;
   }).join("");
 }

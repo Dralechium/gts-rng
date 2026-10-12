@@ -315,44 +315,55 @@ main {
   transition: box-shadow .25s ease;
 }
 
+
 /* Rarity-specific roll display effects */
 
 #display.common {
   outline: 1px solid #888888;
   background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
-  box-shadow: 0 0 8px gray;
-}
-
-#display.uncommon {
-  outline: 1px solid #83B66B;
-  background: linear-gradient(145deg, #142319, #24432B);
-  box-shadow: 0 0 10px #83B66B;
+  box-shadow: 0 0 15px #888888;
 }
 
 #display.rare {
   outline: 1px solid #4da6ff;
   background: linear-gradient(145deg, #0b1a2a, #123a66);
-  box-shadow: 0 0 12px #4da6ff;
+  box-shadow: 0 0 20px #4da6ff;
+}
+
+#display.epic {
+  outline: 1px solid #b84dff;
+  background: linear-gradient(145deg, #1a0b2a, #3a1266);
+  box-shadow: 0 0 25px #b84dff;
 }
 
 #display.legendary {
   outline: 1px solid gold;
   background: linear-gradient(145deg, #2a220b, #665012);
-  box-shadow: 0 0 25px gold;
+  box-shadow: 0 0 30px gold;
 }
 
 #display.mythic {
   outline: 1px solid red;
   background: linear-gradient(145deg, #2a0b0b, #661212);
-  box-shadow: 0 0 35px red;
+  box-shadow: 0 0 40px red;
 }
 
 #display.gts {
   outline: 2px solid transparent;
-  background:
-    linear-gradient(145deg, #101A2D, #0b1425) padding-box,
-    linear-gradient(110deg, #168CF0, #83B66B, #F5E500) border-box;
   border: 2px solid transparent;
+  background:
+    linear-gradient(
+      135deg,
+      #168CF0 0%,
+      #83B66B 50%,
+      #F5E500 100%
+    ) padding-box,
+    linear-gradient(
+      135deg,
+      #168CF0,
+      #83B66B,
+      #F5E500
+    ) border-box;
   box-shadow:
     0 0 22px #168CF0,
     0 0 35px #83B66B88,
@@ -452,46 +463,51 @@ main {
   font-size: 24px;
 }
 
+
 /* Rarity-specific inventory card effects */
 
 .card.common {
   background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
   border-color: #888888;
-  box-shadow: 0 0 8px gray;
-}
-
-.card.uncommon {
-  background: linear-gradient(145deg, #142319, #24432B);
-  border-color: #83B66B;
-  box-shadow: 0 0 10px #83B66B88;
+  box-shadow: 0 0 8px #88888888;
 }
 
 .card.rare {
   background: linear-gradient(145deg, #0b1a2a, #123a66);
   border-color: #4da6ff;
-  box-shadow: 0 0 12px #4da6ff88;
+  box-shadow: 0 0 12px #4da6ff;
+}
+
+.card.epic {
+  background: linear-gradient(145deg, #1a0b2a, #3a1266);
+  border-color: #b84dff;
+  box-shadow: 0 0 18px #b84dff;
 }
 
 .card.legendary {
   background: linear-gradient(145deg, #2a220b, #665012);
   border-color: gold;
-  box-shadow: 0 0 18px #FFD70088;
+  box-shadow: 0 0 25px gold;
 }
 
 .card.mythic {
   background: linear-gradient(145deg, #2a0b0b, #661212);
   border-color: red;
-  box-shadow: 0 0 22px #FF000088;
+  box-shadow: 0 0 35px red;
 }
 
 .card.gts {
-  background:
-    linear-gradient(145deg, #101A2D, #0b1425);
-  border: 1px solid #83B66B;
+  background: linear-gradient(
+    135deg,
+    #168CF0 0%,
+    #83B66B 50%,
+    #F5E500 100%
+  );
+  border: 1px solid #FFFFFF88;
   box-shadow:
-    0 0 12px #168CF0,
-    0 0 20px #83B66B88,
-    0 0 25px #F5E50044;
+    0 0 15px #168CF0,
+    0 0 25px #83B66B88,
+    0 0 35px #F5E50066;
 }
 
 /* LEADERBOARD */
@@ -966,8 +982,8 @@ function rarity(odds) {
   if (odds >= 1000000) return "gts";
   if (odds >= 100000) return "mythic";
   if (odds >= 10000) return "legendary";
-  if (odds >= 1000) return "rare";
-  if (odds >= 100) return "uncommon";
+  if (odds >= 1000) return "epic";
+  if (odds >= 100) return "rare";
   return "common";
 }
 

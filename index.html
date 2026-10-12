@@ -908,11 +908,11 @@ const db = getFirestore(app);
 // Replace these placeholders with the actual GTS members later.
 // Odds are denominators: 2 means 1 in 2, 1000 means 1 in 1000.
 const members = [
-  {id:"duckwithsunnies", name:"duckwithsunnies", odds:2, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/6ef3b0ef-bc0b-463d-a3d9-1f2a646a534f-profile_image-70x70.png"},
-  {id:"ChefGmd", name:"ChefGmd", odds:512, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/f6dfdec2-1ad0-4757-aa3c-c061cc5cab69-profile_image-70x70.png"},
-  {id:"midgatal", name:"midgatal", odds:750, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/bc185f86-30d2-4422-b547-5f4e3c504d54-profile_image-70x70.png"},
-  {id:"IVDrale", name:"IVDrale", odds:1000, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/6e71f426-65ca-4914-b6e8-0e5499f032cb-profile_image-70x70.png"},
-  {id:"theosGMD", name:"theosGMD", odds:100000, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/0ffc8233-6b32-411e-bfbd-4167c09cc2a2-profile_image-70x70.png"}
+  {name:"duckwithsunnies", odds:2, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/6ef3b0ef-bc0b-463d-a3d9-1f2a646a534f-profile_image-70x70.png"},
+  {name:"ChefGmd", odds:512, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/f6dfdec2-1ad0-4757-aa3c-c061cc5cab69-profile_image-70x70.png"},
+  {name:"midgatal", odds:750, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/bc185f86-30d2-4422-b547-5f4e3c504d54-profile_image-70x70.png"},
+  {name:"IVDrale", odds:1000, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/6e71f426-65ca-4914-b6e8-0e5499f032cb-profile_image-70x70.png"},
+  {name:"theosGMD", odds:100000, image:"https://static-cdn.jtvnw.net/jtv_user_pictures/0ffc8233-6b32-411e-bfbd-4167c09cc2a2-profile_image-70x70.png"}
 ];
 
 const $ = id => document.getElementById(id);
@@ -985,7 +985,7 @@ function bestMember() {
   if (!profile) return null;
 
   return members
-    .filter(m => (profile.inventory?.[m.id] || 0) > 0)
+    .filter(m => (profile.inventory?.[m.name] || 0) > 0)
     .sort((a, b) => b.odds - a.odds)[0] || null;
 }
 
@@ -1005,12 +1005,13 @@ function updateUI() {
 
 function renderInventory() {
   $("inventory").innerHTML = members.map(m => {
-    const count = profile?.inventory?.[m.id] || 0;
+    const count = profile?.inventory?.[m.name] || 0;
 
     return `<div class="card ${count ? rarity(m.odds) : "locked"}">
       <img src="${escapeHTML(m.image)}" alt="" loading="lazy">
       <strong>${escapeHTML(count ? m.name : "???")}</strong>
-      <span>${count ? `1 in ${m.odds}` : "Locked"}</span>
+      <span>${count ? `1 in ${m.odds.toLocaleString()}` : "Locked"}</span>
+      ${count ? `<span>Owned: ${count}</span>` : ""}
     </div>`;
   }).join("");
 }

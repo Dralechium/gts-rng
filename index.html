@@ -1,0 +1,686 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTS RNG</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --blue: #168CF0;
+  --green: #83B66B;
+  --yellow: #F5E500;
+  --bg: #0A1020;
+  --panel: #111B30;
+  --border: #253958;
+  --muted: #9BAAC0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: white;
+  font-family: Orbitron, Arial, sans-serif;
+}
+
+button, input { font: inherit; }
+
+button {
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s, background .2s;
+}
+
+button:hover { transform: translateY(-2px); }
+
+.header {
+  padding: 20px;
+  text-align: center;
+  background: #0D1629;
+  border-bottom: 1px solid var(--border);
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--blue);
+  text-shadow: 0 0 18px #168CF077;
+  font-size: clamp(25px, 5vw, 38px);
+}
+
+#accountBar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+
+button, .nav button {
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 16px;
+}
+
+.primary {
+  background: var(--blue);
+  color: white;
+  box-shadow: 0 0 14px #168CF044;
+}
+
+.secondary {
+  background: #26344B;
+  color: white;
+}
+
+.nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 10px;
+}
+
+.nav button {
+  background: transparent;
+  color: white;
+  border: 1px solid var(--border);
+}
+
+.nav button.active {
+  background: #168CF022;
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+main {
+  width: min(1000px, 100%);
+  margin: auto;
+  padding: 10px 18px 40px;
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 25px;
+}
+
+.stat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  flex: 1;
+  min-width: 150px;
+}
+
+.stat strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--blue);
+}
+
+.roll-area { text-align: center; }
+
+#display {
+  width: min(360px, 100%);
+  min-height: 260px;
+  margin: 20px auto;
+  padding: 25px 15px;
+  background: linear-gradient(145deg, #14213A, #0E1729);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: .25s;
+}
+
+#display.rare {
+  border-color: var(--blue);
+  box-shadow: 0 0 22px #168CF044;
+}
+
+#display.epic {
+  border-color: #B66CFF;
+  box-shadow: 0 0 24px #B66CFF55;
+}
+
+#display.legendary {
+  border-color: var(--yellow);
+  box-shadow: 0 0 30px #F5E50055;
+}
+
+#display.mythic {
+  border-color: #FF704F;
+  box-shadow: 0 0 35px #FF704F66;
+}
+
+#display img {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 50%;
+  background: #202D44;
+}
+
+#name {
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+#odds { color: var(--muted); }
+
+#rollButton {
+  min-width: 210px;
+  padding: 17px 30px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+#autoButton { margin: 10px; }
+
+#status {
+  min-height: 25px;
+  margin: 15px 0;
+  color: var(--green);
+  overflow-wrap: anywhere;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  min-height: 170px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 14px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  overflow-wrap: anywhere;
+  transition: .2s;
+}
+
+.card:hover { transform: scale(1.025); }
+
+.card img {
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.card.locked img {
+  filter: blur(7px) grayscale(1);
+}
+
+.lockedText {
+  color: var(--muted);
+  font-size: 24px;
+}
+
+.card.rare { box-shadow: inset 0 0 15px #168CF033; }
+.card.epic { box-shadow: inset 0 0 15px #B66CFF44; }
+.card.legendary { box-shadow: inset 0 0 18px #F5E50033; }
+.card.mythic { box-shadow: inset 0 0 18px #FF704F44; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.table th, .table td {
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.table th { color: var(--blue); }
+
+#authPanel {
+  max-width: 380px;
+  margin: 20px auto;
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--blue);
+  border-radius: 14px;
+}
+
+#authPanel h2 { color: var(--blue); }
+
+#authPanel input {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 12px;
+  color: white;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+#authPanel input:focus {
+  outline: 1px solid var(--blue);
+}
+
+#cutscene {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, #F5E500AA, #0A1020 70%);
+}
+
+#cutscene.play {
+  animation: burst 2.4s ease-in-out;
+}
+
+@keyframes burst {
+  0% { opacity: 0; transform: scale(.3); }
+  20% { opacity: 1; transform: scale(.7); }
+  70% { opacity: .85; transform: scale(1.5); }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+
+#display.rolling {
+  animation: flicker .12s linear infinite alternate;
+}
+
+@keyframes flicker {
+  from { transform: translateX(-2px); filter: brightness(1.1); }
+  to { transform: translateX(2px); filter: brightness(.75); }
+}
+
+.hidden { display: none !important; }
+
+@media(max-width: 520px) {
+  .nav { gap: 5px; }
+  .nav button { padding: 10px 9px; font-size: 12px; }
+  .table th, .table td { padding: 10px 4px; font-size: 11px; }
+}
+</style>
+</head>
+
+<body>
+<div id="cutscene"></div>
+
+<header class="header">
+  <h1>GTS RNG</h1>
+  <div id="accountBar">
+    <span id="accountText">Not logged in</span>
+    <button id="logoutButton" class="secondary hidden">Logout</button>
+  </div>
+</header>
+
+<section id="authPanel">
+  <h2 id="authTitle">Login</h2>
+  <input id="usernameInput" placeholder="Username (signup only)" maxlength="20" class="hidden">
+  <input id="emailInput" type="email" placeholder="Email" autocomplete="email">
+  <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password">
+  <button id="submitAuth" class="primary">Login</button>
+  <button id="switchAuth" class="secondary">Need an account? Sign up</button>
+  <p id="authMessage" role="status"></p>
+</section>
+
+<div id="game" class="hidden">
+  <nav class="nav">
+    <button class="active" data-page="rollPage">Roll</button>
+    <button data-page="inventoryPage">Inventory</button>
+    <button data-page="leaderboardPage">Leaderboard</button>
+  </nav>
+
+  <main>
+    <section class="stats">
+      <div class="stat">Rolls<strong id="rollCount">0</strong></div>
+      <div class="stat">Best rarity<strong id="bestCount">None</strong></div>
+    </section>
+
+    <section id="rollPage" class="page active">
+      <div class="roll-area">
+        <div id="display">
+          <img id="resultImage" alt="Rolled member" src="https://placehold.co/120x120/111B30/168CF0?text=GTS">
+          <div id="name">Ready to roll?</div>
+          <div id="odds">Your next result awaits</div>
+        </div>
+        <button id="rollButton" class="primary">ROLL</button>
+        <button id="autoButton" class="secondary">AUTOROLL: OFF</button>
+        <p id="status" role="status"></p>
+      </div>
+    </section>
+
+    <section id="inventoryPage" class="page">
+      <h2>Inventory</h2>
+      <div id="inventory" class="grid"></div>
+    </section>
+
+    <section id="leaderboardPage" class="page">
+      <h2>Best Rarity Leaderboard</h2>
+      <div id="leaderboard">Loading leaderboard...</div>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, getDocs,
+  collection, serverTimestamp, query, orderBy, limit
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+// REPLACE these values with your Firebase web app configuration.
+const firebaseConfig = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_AUTH_DOMAIN",
+  projectId: "PASTE_PROJECT_ID",
+  appId: "PASTE_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Replace these four placeholders with the real GTS members.
+// Odds are denominators: 2 means 1 in 2, 1000 means 1 in 1000.
+const members = [
+  { id: "memberA", name: "Member One", odds: 2, image: "https://placehold.co/120x120/111B30/168CF0?text=A" },
+  { id: "memberB", name: "Member Two", odds: 16, image: "https://placehold.co/120x120/111B30/83B66B?text=B" },
+  { id: "memberC", name: "Member Three", odds: 128, image: "https://placehold.co/120x120/111B30/F5E500?text=C" },
+  { id: "memberD", name: "Member Four", odds: 1000, image: "https://placehold.co/120x120/111B30/F5E500?text=D" }
+];
+
+const $ = id => document.getElementById(id);
+let currentUser = null;
+let profile = null;
+let signupMode = false;
+let rolling = false;
+let autoRoll = false;
+let autoTimer = null;
+
+function rarity(odds) {
+  if (odds <= 16) return "common";
+  if (odds <= 64) return "rare";
+  if (odds <= 500) return "epic";
+  if (odds <= 1024) return "legendary";
+  return "mythic";
+}
+
+function bestMember() {
+  if (!profile) return null;
+  return members
+    .filter(m => (profile.inventory?.[m.id] || 0) > 0)
+    .sort((a, b) => b.odds - a.odds)[0] || null;
+}
+
+function updateUI() {
+  $("rollCount").textContent = profile?.rolls || 0;
+  const best = bestMember();
+  $("bestCount").textContent = best ? `${best.name} (1/${best.odds})` : "None";
+  $("accountText").textContent = profile?.username || currentUser?.email || "Not logged in";
+}
+
+function renderInventory() {
+  $("inventory").innerHTML = members.map(m => {
+    const count = profile?.inventory?.[m.id] || 0;
+    return `<div class="card ${count ? rarity(m.odds) : "locked"}">
+      <img src="${m.image}" alt="" loading="lazy">
+      <strong>${count ? m.name : "???"}</strong>
+      <span>${count ? `1 in ${m.odds}` : "Locked"}</span>
+      <span>${count ? `Owned: ${count}` : "Discover this member"}</span>
+    </div>`;
+  }).join("");
+}
+
+async function saveProfile() {
+  if (!currentUser || !profile) return;
+  await setDoc(doc(db, "users", currentUser.uid), {
+    username: profile.username,
+    rolls: profile.rolls,
+    inventory: profile.inventory,
+    bestName: bestMember()?.name || null,
+    bestOdds: bestMember()?.odds || 0,
+    updatedAt: serverTimestamp()
+  });
+}
+
+function weightedPick() {
+  // Relative weights make rarer cards less likely.
+  const total = members.reduce((sum, m) => sum + 1 / m.odds, 0);
+  let value = Math.random() * total;
+  for (const m of members) {
+    value -= (1 / m.odds);
+    if (value <= 0) return m;
+  }
+  return members[0];
+}
+
+function showMember(m) {
+  $("resultImage").src = m.image;
+  $("name").textContent = m.name;
+  $("odds").textContent = `1 in ${m.odds}`;
+  $("display").className = rarity(m.odds);
+
+  if (m.odds > 1024) {
+    $("cutscene").classList.remove("play");
+    void $("cutscene").offsetWidth;
+    $("cutscene").classList.add("play");
+  }
+}
+
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function roll() {
+  if (!currentUser || !profile || rolling) return;
+  rolling = true;
+  $("rollButton").disabled = true;
+  $("display").classList.add("rolling");
+  $("status").textContent = "Rolling...";
+
+  try {
+    const duration = 1800;
+    const start = performance.now();
+    let nextChange = 0;
+
+    while (performance.now() - start < duration) {
+      const elapsed = performance.now() - start;
+      const progress = elapsed / duration;
+      if (elapsed >= nextChange) {
+        showMember(members[Math.floor(Math.random() * members.length)]);
+        nextChange = elapsed + 40 + progress * 180;
+      }
+      await wait(25);
+    }
+
+    const result = weightedPick();
+    profile.rolls = (profile.rolls || 0) + 1;
+    profile.inventory[result.id] = (profile.inventory[result.id] || 0) + 1;
+    showMember(result);
+    updateUI();
+    renderInventory();
+    $("status").textContent = `You rolled ${result.name}! (1 in ${result.odds})`;
+    await saveProfile();
+  } catch (error) {
+    console.error(error);
+    $("status").textContent = "Save failed. Check your connection and Firebase rules.";
+  } finally {
+    $("display").classList.remove("rolling");
+    rolling = false;
+    $("rollButton").disabled = false;
+    if (autoRoll && currentUser) autoTimer = setTimeout(roll, 500);
+  }
+}
+
+async function loadLeaderboard() {
+  const target = $("leaderboard");
+  target.textContent = "Loading leaderboard...";
+  try {
+    const q = query(collection(db, "users"), orderBy("bestOdds", "desc"), limit(50));
+    const snapshot = await getDocs(q);
+    const rows = snapshot.docs.map(d => d.data());
+    target.innerHTML = `<table class="table">
+      <thead><tr><th>Rank</th><th>Username</th><th>Rolls</th><th>Best</th></tr></thead>
+      <tbody>${rows.map((u, i) => `<tr>
+        <td>${i + 1}</td>
+        <td>${escapeHTML(u.username || "Player")}</td>
+        <td>${Number(u.rolls) || 0}</td>
+        <td>${escapeHTML(u.bestName || "None")}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  } catch (error) {
+    console.error(error);
+    target.textContent = "Could not load leaderboard. Check Firestore setup.";
+  }
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  })[c]);
+}
+
+$("switchAuth").addEventListener("click", () => {
+  signupMode = !signupMode;
+  $("authTitle").textContent = signupMode ? "Sign Up" : "Login";
+  $("submitAuth").textContent = signupMode ? "Create Account" : "Login";
+  $("switchAuth").textContent = signupMode
+    ? "Already registered? Login" : "Need an account? Sign up";
+  $("usernameInput").classList.toggle("hidden", !signupMode);
+  $("passwordInput").autocomplete = signupMode ? "new-password" : "current-password";
+  $("authMessage").textContent = "";
+});
+
+$("submitAuth").addEventListener("click", async () => {
+  const email = $("emailInput").value.trim();
+  const password = $("passwordInput").value;
+  const username = $("usernameInput").value.trim();
+
+  $("authMessage").textContent = "Please wait...";
+  $("submitAuth").disabled = true;
+
+  try {
+    if (signupMode) {
+      if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) {
+        throw new Error("Username must be 3–20 letters, numbers, or underscores.");
+      }
+
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      const newProfile = {
+        username,
+        rolls: 0,
+        inventory: {},
+        bestName: null,
+        bestOdds: 0,
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(doc(db, "users", credential.user.uid), newProfile);
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+    $("authMessage").textContent = "";
+  } catch (error) {
+    console.error(error);
+    $("authMessage").textContent = error.message;
+  } finally {
+    $("submitAuth").disabled = false;
+  }
+});
+
+$("logoutButton").addEventListener("click", async () => {
+  autoRoll = false;
+  clearTimeout(autoTimer);
+  $("autoButton").textContent = "AUTOROLL: OFF";
+  await signOut(auth);
+});
+
+$("rollButton").addEventListener("click", roll);
+
+$("autoButton").addEventListener("click", () => {
+  autoRoll = !autoRoll;
+  $("autoButton").textContent = `AUTOROLL: ${autoRoll ? "ON" : "OFF"}`;
+  if (autoRoll && !rolling) roll();
+  if (!autoRoll) clearTimeout(autoTimer);
+});
+
+document.querySelectorAll(".nav button").forEach(button => {
+  button.addEventListener("click", async () => {
+    document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    button.classList.add("active");
+    $(button.dataset.page).classList.add("active");
+    if (button.dataset.page === "leaderboardPage") await loadLeaderboard();
+  });
+});
+
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
+  profile = null;
+
+  $("authPanel").classList.toggle("hidden", !!user);
+  $("game").classList.toggle("hidden", !user);
+  $("logoutButton").classList.toggle("hidden", !user);
+
+  if (!user) {
+    $("accountText").textContent = "Not logged in";
+    return;
+  }
+
+  try {
+    const ref = doc(db, "users", user.uid);
+    const snapshot = await getDoc(ref);
+
+    if (snapshot.exists()) {
+      profile = snapshot.data();
+    } else {
+      // Recovery for an account whose profile document is missing.
+      profile = {
+        username: user.email?.split("@")[0] || "Player",
+        rolls: 0,
+        inventory: {},
+        bestName: null,
+        bestOdds: 0
+      };
+      await saveProfile();
+    }
+
+    profile.rolls = Number(profile.rolls) || 0;
+    profile.inventory ||= {};
+    updateUI();
+    renderInventory();
+    await loadLeaderboard();
+  } catch (error) {
+    console.error(error);
+    $("authMessage").textContent =
+      "Couldn't load your save. Check Firebase configuration and Firestore rules.";
+  }
+});
+</script>
+</body>
+</html>

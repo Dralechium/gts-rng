@@ -729,14 +729,15 @@ main {
     </div>
 
     <div id="accountBar">
-      <span id="accountText">Not logged in</span>
+      <span id="accountText">Guest</span>
+      <button id="loginButton" class="secondary">Login</button>
       <button id="logoutButton" class="primary hidden">Logout</button>
     </div>
 
   </div>
 </header>
 
-<section id="authPanel">
+<section id="authPanel" class="hidden">
   <h2 id="authTitle">Login</h2>
 
   <input
@@ -767,7 +768,7 @@ main {
   <p id="authMessage" role="status"></p>
 </section>
 
-<div id="game" class="hidden">
+<div id="game">
   <nav class="nav">
     <button class="active" data-page="rollPage">Roll</button>
     <button data-page="inventoryPage">Inventory</button>
@@ -872,12 +873,60 @@ const members = [
 
 const $ = id => document.getElementById(id);
 
+
 let currentUser = null;
 let profile = null;
 let signupMode = false;
 let rolling = false;
 let autoRoll = false;
 let autoTimer = null;
+let pendingSignupUsername = null;
+
+const GUEST_SAVE_KEY = "gtsRngGuestSave";
+
+function emptyProfile(username = "Guest") {
+  return {
+    username,
+    rolls: 0,
+    inventory: {},
+    bestName: null,
+    bestOdds: 0
+  };
+}
+
+function loadGuestProfile() {
+  try {
+    const saved = localStorage.getItem(GUEST_SAVE_KEY);
+
+    if (saved) {
+      const data = JSON.parse(saved);
+
+      return {
+        ...emptyProfile(),
+        ...data,
+        username: "Guest",
+        rolls: Number(data.rolls) || 0,
+        inventory: data.inventory || {}
+      };
+    }
+  } catch (error) {
+    console.error("Could not load guest save:", error);
+  }
+
+  return emptyProfile();
+}
+
+function saveGuestProfile() {
+  if (currentUser || !profile) return;
+
+  localStorage.setItem(
+    GUEST_SAVE_KEY,
+    JSON.stringify({
+      rolls: profile.rolls || 0,
+      inventory: profile.inventory || {}
+    })
+  );
+}
 
 function rarity(odds) {
   if (odds <= 16) return "common";
@@ -965,7 +1014,7 @@ function showMember(m) {
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function roll() {
-  if (!currentUser || !profile || rolling) return;
+  if (!profile || rolling) return;
 
   rolling = true;
   $("rollButton").disabled = true;
@@ -1001,7 +1050,11 @@ async function roll() {
     $("status").textContent =
       `You rolled ${result.name}! (1 in ${result.odds})`;
 
-    await saveProfile();
+    if (currentUser) {
+      await saveProfile();
+    } else {
+      saveGuestProfile();
+    }
   } catch (error) {
     console.error(error);
     $("status").textContent =
@@ -1011,7 +1064,7 @@ async function roll() {
     rolling = false;
     $("rollButton").disabled = false;
 
-    if (autoRoll && currentUser) {
+    if (autoRoll && profile) {
       autoTimer = setTimeout(roll, 500);
     }
   }
@@ -1066,6 +1119,11 @@ function escapeHTML(value) {
   })[c]);
 }
 
+$("loginButton").addEventListener("click", () => {
+  $("authPanel").classList.toggle("hidden");
+  $("authMessage").textContent = "";
+});
+
 $("switchAuth").addEventListener("click", () => {
   signupMode = !signupMode;
 
@@ -1101,24 +1159,12 @@ $("submitAuth").addEventListener("click", async () => {
         );
       }
 
-      const credential = await createUserWithEmailAndPassword(
+      pendingSignupUsername = username;
+
+      await createUserWithEmailAndPassword(
         auth,
         email,
         password
-      );
-
-      const newProfile = {
-        username,
-        rolls: 0,
-        inventory: {},
-        bestName: null,
-        bestOdds: 0,
-        updatedAt: serverTimestamp()
-      };
-
-      await setDoc(
-        doc(db, "users", credential.user.uid),
-        newProfile
       );
     } else {
       await signInWithEmailAndPassword(auth, email, password);
@@ -1177,20 +1223,25 @@ document.querySelectorAll(".nav button").forEach(button => {
   });
 });
 
+
 onAuthStateChanged(auth, async user => {
   currentUser = user;
   profile = null;
 
-  $("authPanel").classList.toggle("hidden", !!user);
-  $("game").classList.toggle("hidden", !user);
+  $("authPanel").classList.add("hidden");
+  $("game").classList.remove("hidden");
+  $("headerStats").classList.remove("hidden");
+  $("loginButton").classList.toggle("hidden", !!user);
   $("logoutButton").classList.toggle("hidden", !user);
-  $("headerStats").classList.toggle("hidden", !user);
 
   if (!user) {
-    $("accountText").textContent = "Not logged in";
-    $("rollCount").textContent = "0";
-    $("bestCount").textContent = "None";
-    $("inventory").innerHTML = "";
+    // Start or resume the local guest save after logout.
+    profile = loadGuestProfile();
+
+    $("accountText").textContent = "Guest";
+    updateUI();
+    renderInventory();
+    await loadLeaderboard();
     return;
   }
 
@@ -1198,24 +1249,61 @@ onAuthStateChanged(auth, async user => {
     const ref = doc(db, "users", user.uid);
     const snapshot = await getDoc(ref);
 
-    if (snapshot.exists()) {
-      profile = snapshot.data();
-    } else {
-      // Recovery for an account whose profile document is missing.
-      profile = {
-        username: user.email?.split("@")[0] || "Player",
-        rolls: 0,
-        inventory: {},
-        bestName: null,
-        bestOdds: 0
-      };
+    // Capture guest progress before changing the active profile.
+    const guestProfile = loadGuestProfile();
 
-      await saveProfile();
+    if (snapshot.exists()) {
+      profile = {
+        ...emptyProfile(user.email?.split("@")[0] || "Player"),
+        ...snapshot.data(),
+        rolls: Number(snapshot.data().rolls) || 0,
+        inventory: snapshot.data().inventory || {}
+      };
+    } else {
+      profile = emptyProfile(
+        pendingSignupUsername ||
+        user.email?.split("@")[0] ||
+        "Player"
+      );
     }
 
-    profile.rolls = Number(profile.rolls) || 0;
-    profile.inventory ||= {};
+    // Merge guest progress into the account exactly once.
+    const guestHasProgress =
+      guestProfile.rolls > 0 ||
+      Object.values(guestProfile.inventory).some(
+        count => Number(count) > 0
+      );
 
+    if (guestHasProgress) {
+      profile.rolls =
+        (Number(profile.rolls) || 0) +
+        (Number(guestProfile.rolls) || 0);
+
+      for (const [id, count] of Object.entries(guestProfile.inventory)) {
+        profile.inventory[id] =
+          (Number(profile.inventory[id]) || 0) +
+          (Number(count) || 0);
+      }
+    }
+
+    profile.username =
+      snapshot.exists()
+        ? (snapshot.data().username || profile.username)
+        : profile.username;
+
+    profile.bestName = bestMember()?.name || null;
+    profile.bestOdds = bestMember()?.odds || 0;
+
+    // Save account progress before removing the guest save.
+    await saveProfile();
+
+    if (guestHasProgress) {
+      localStorage.removeItem(GUEST_SAVE_KEY);
+    }
+
+    pendingSignupUsername = null;
+
+    $("authMessage").textContent = "";
     updateUI();
     renderInventory();
     await loadLeaderboard();
@@ -1223,7 +1311,7 @@ onAuthStateChanged(auth, async user => {
     console.error(error);
 
     $("authMessage").textContent =
-      "Couldn't load your save. Check Firebase configuration and Firestore rules.";
+      "Couldn't load or merge your save. Check your connection and Firestore rules.";
   }
 });
 </script>

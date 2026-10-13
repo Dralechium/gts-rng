@@ -999,6 +999,17 @@ let rolling = false;
 let autoRoll = false;
 let autoTimer = null;
 let pendingSignupUsername = null;
+let leaderboardCache = null;
+let leaderboardCacheTime = 0;
+let leaderboardLoading = null;
+let unsavedRolls = 0;
+let profileSaveTimer = null;
+let profileSavePromise = null;
+
+const PROFILE_SAVE_BATCH_SIZE = 10;
+const PROFILE_SAVE_DELAY_MS = 15_000;
+
+const LEADERBOARD_CACHE_MS = 60_000;
 
 const GUEST_SAVE_KEY = "gtsRngGuestSave";
 
@@ -1110,6 +1121,80 @@ async function saveProfile() {
   });
 }
 
+async function flushProfileSave() {
+  clearTimeout(profileSaveTimer);
+  profileSaveTimer = null;
+
+  // Wait for an existing save before deciding there is nothing to do.
+  if (profileSavePromise) {
+    await profileSavePromise;
+
+    if (unsavedRolls > 0) {
+      return flushProfileSave();
+    }
+
+    return;
+  }
+
+  if (!currentUser || !profile || unsavedRolls === 0) {
+    return;
+  }
+
+  const rollsToSave = unsavedRolls;
+  unsavedRolls = 0;
+
+  profileSavePromise = saveProfile()
+    .catch(error => {
+      unsavedRolls += rollsToSave;
+      throw error;
+    })
+    .finally(() => {
+      profileSavePromise = null;
+    });
+
+  await profileSavePromise;
+
+  if (unsavedRolls > 0) {
+    scheduleProfileSave();
+  }
+}
+
+function scheduleProfileSave() {
+  if (!currentUser || !profile) return;
+
+  if (unsavedRolls >= PROFILE_SAVE_BATCH_SIZE) {
+    flushProfileSave().catch(error => {
+      console.error("Profile save failed:", error);
+      $("status").textContent =
+        "Your progress could not be saved. Check your connection.";
+    });
+
+    return;
+  }
+
+  if (!profileSaveTimer) {
+    profileSaveTimer = setTimeout(() => {
+      flushProfileSave().catch(error => {
+        console.error("Profile save failed:", error);
+        $("status").textContent =
+          "Your progress could not be saved. Check your connection.";
+      });
+    }, PROFILE_SAVE_DELAY_MS);
+  }
+}
+
+async function queueProfileSave() {
+  if (!currentUser || !profile) return;
+
+  unsavedRolls++;
+  scheduleProfileSave();
+
+  // Save immediately when the batch reaches 10 rolls.
+  if (unsavedRolls >= PROFILE_SAVE_BATCH_SIZE) {
+    await flushProfileSave();
+  }
+}
+
 function weightedPick() {
   // Relative weights make rarer cards less likely.
   const total = members.reduce((sum, m) => sum + 1 / m.odds, 0);
@@ -1213,7 +1298,7 @@ async function roll() {
       `You rolled ${result.name}! (1 in ${result.odds})`;
 
     if (currentUser) {
-      await saveProfile();
+      await queueProfileSave();
     } else {
       saveGuestProfile();
     }
@@ -1232,53 +1317,80 @@ async function roll() {
   }
 }
 
-async function loadLeaderboard() {
+async function loadLeaderboard(forceRefresh = false) {
   const target = $("leaderboard");
+
+  // Reuse cached leaderboard HTML for 60 seconds.
+  if (
+    !forceRefresh &&
+    leaderboardCache !== null &&
+    Date.now() - leaderboardCacheTime < LEADERBOARD_CACHE_MS
+  ) {
+    target.innerHTML = leaderboardCache;
+    return;
+  }
+
+  // If a request is already running, reuse it.
+  if (leaderboardLoading) {
+    return leaderboardLoading;
+  }
+
   target.textContent = "Loading leaderboard...";
 
-  try {
-    const q = query(
-      collection(db, "users"),
-      orderBy("rolls", "desc"),
-      limit(50)
-    );
+  leaderboardLoading = (async () => {
+    try {
+      const q = query(
+        collection(db, "users"),
+        orderBy("rolls", "desc"),
+        limit(50)
+      );
 
-    const snapshot = await getDocs(q);
-    const rows = snapshot.docs.map(d => d.data());
+      const snapshot = await getDocs(q);
 
-    target.innerHTML = `<table class="table">
-      <thead>
-        <tr>
-          <th>Rank</th>
-          <th>Username</th>
-          <th>Rolls</th>
-          <th>Best Card</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map((u, i) => {
-          const best = members.find(
-            m => m.name === u.bestName
-          );
+      const rows = snapshot.docs.map(d => d.data());
 
-          const bestText = best
-            ? `<span class="rarity-name ${rarity(best.odds)}">${escapeHTML(best.name)}</span> (1 in ${best.odds.toLocaleString()})`
-            : "None";
+      const html = `<table class="table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Username</th>
+            <th>Rolls</th>
+            <th>Best Card</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((u, i) => {
+            const best = members.find(
+              m => m.name === u.bestName
+            );
 
-          return `<tr>
-            <td>${i + 1}</td>
-            <td>${escapeHTML(u.username || "Player")}</td>
-            <td>${(Number(u.rolls) || 0).toLocaleString()}</td>
-            <td>${bestText}</td>
-          </tr>`;
-        }).join("")}
-      </tbody>
-    </table>`;
-  } catch (error) {
-    console.error(error);
-    target.textContent =
-      "Could not load leaderboard. Please try again.";
-  }
+            const bestText = best
+              ? `<span class="rarity-name ${rarity(best.odds)}">${escapeHTML(best.name)}</span> (1 in ${best.odds.toLocaleString()})`
+              : "None";
+
+            return `<tr>
+              <td>${i + 1}</td>
+              <td>${escapeHTML(u.username || "Player")}</td>
+              <td>${(Number(u.rolls) || 0).toLocaleString()}</td>
+              <td>${bestText}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>`;
+
+      leaderboardCache = html;
+      leaderboardCacheTime = Date.now();
+      target.innerHTML = html;
+    } catch (error) {
+      console.error("Leaderboard load failed:", error);
+      target.textContent =
+        "Could not load leaderboard. Please try again.";
+    } finally {
+      leaderboardLoading = null;
+    }
+  })();
+
+  return leaderboardLoading;
 }
 
 function escapeHTML(value) {
@@ -1356,11 +1468,18 @@ $("logoutButton").addEventListener("click", async () => {
   clearTimeout(autoTimer);
   $("autoButton").textContent = "AUTOROLL: OFF";
 
+  $("logoutButton").disabled = true;
+
   try {
+    // Save pending account progress before signing out.
+    await flushProfileSave();
     await signOut(auth);
   } catch (error) {
     console.error(error);
-    $("authMessage").textContent = "Logout failed. Please try again.";
+    $("authMessage").textContent =
+      "Logout failed or your progress could not be saved. Please check your connection and try again.";
+  } finally {
+    $("logoutButton").disabled = false;
   }
 });
 
@@ -1374,6 +1493,14 @@ $("autoButton").addEventListener("click", () => {
 
   if (autoRoll && !rolling) roll();
   if (!autoRoll) clearTimeout(autoTimer);
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && unsavedRolls > 0) {
+    flushProfileSave().catch(error => {
+      console.error("Background profile save failed:", error);
+    });
+  }
 });
 
 document.querySelectorAll(".nav button").forEach(button => {
@@ -1413,7 +1540,6 @@ onAuthStateChanged(auth, async user => {
     $("accountText").textContent = "Guest";
     updateUI();
     renderInventory();
-    await loadLeaderboard();
     return;
   }
 
@@ -1478,7 +1604,6 @@ onAuthStateChanged(auth, async user => {
     $("authMessage").textContent = "";
     updateUI();
     renderInventory();
-    await loadLeaderboard();
   } catch (error) {
     console.error(error);
 

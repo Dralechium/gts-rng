@@ -1217,12 +1217,22 @@ async function loadLeaderboard() {
         </tr>
       </thead>
       <tbody>
-        ${rows.map((u, i) => `<tr>
-          <td>${i + 1}</td>
-          <td>${escapeHTML(u.username || "Player")}</td>
-          <td>${(Number(u.rolls) || 0).toLocaleString()}</td>
-          <td>${escapeHTML(u.bestName || "None")}</td>
-        </tr>`).join("")}
+        ${rows.map((u, i) => {
+          const best = members.find(
+            m => m.name === u.bestName
+          );
+
+          const bestText = best
+            ? `${best.name} (1 in ${best.odds.toLocaleString()})`
+            : "None";
+
+          return `<tr>
+            <td>${i + 1}</td>
+            <td>${escapeHTML(u.username || "Player")}</td>
+            <td>${(Number(u.rolls) || 0).toLocaleString()}</td>
+            <td>${escapeHTML(bestText)}</td>
+          </tr>`;
+        }).join("")}
       </tbody>
     </table>`;
   } catch (error) {

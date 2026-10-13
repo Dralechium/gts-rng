@@ -1084,19 +1084,25 @@ function weightedPick() {
   return members[0];
 }
 
-function showMember(m) {
+function showMember(m, playCutscene = true) {
   $("resultImage").src = m.image;
   $("name").textContent = m.name;
-  $("odds").textContent = `1 in ${m.odds}`;
+  $("odds").textContent = `1 in ${m.odds.toLocaleString()}`;
   $("display").className = rarity(m.odds);
 
-  if (m.odds >= 100000) {
+  if (playCutscene && m.odds >= 100000) {
     $("cutscene").classList.remove("play");
     void $("cutscene").offsetWidth;
     $("cutscene").classList.add("play");
   }
 }
 
+const gtsMembers = members.filter(m => m.odds >= 1000000);
+
+const defaultGtsMember =
+  gtsMembers[Math.floor(secureRandom() * gtsMembers.length)];
+
+showMember(defaultGtsMember, false);
 
 window.previewCard = function (cardName) {
   if (typeof cardName !== "string" || !cardName.trim()) {

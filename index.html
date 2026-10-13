@@ -870,7 +870,7 @@ main {
     </section>
 
     <section id="leaderboardPage" class="page">
-      <h2>Best Rarity Leaderboard</h2>
+      <h2>Rolls Leaderboard</h2>
       <div id="leaderboard">Loading leaderboard...</div>
     </section>
   </main>
@@ -1200,7 +1200,7 @@ async function loadLeaderboard() {
   try {
     const q = query(
       collection(db, "users"),
-      orderBy("bestOdds", "desc"),
+      orderBy("rolls", "desc"),
       limit(50)
     );
 
@@ -1220,7 +1220,7 @@ async function loadLeaderboard() {
         ${rows.map((u, i) => `<tr>
           <td>${i + 1}</td>
           <td>${escapeHTML(u.username || "Player")}</td>
-          <td>${Number(u.rolls) || 0}</td>
+          <td>${(Number(u.rolls) || 0).toLocaleString()}</td>
           <td>${escapeHTML(u.bestName || "None")}</td>
         </tr>`).join("")}
       </tbody>

@@ -510,6 +510,40 @@ main {
     0 0 35px #F5E50066;
 }
 
+/* RARITY COLOURS FOR CARD NAMES */
+
+.rarity-name.common {
+  color: #AAAAAA;
+}
+
+.rarity-name.rare {
+  color: #4DA6FF;
+}
+
+.rarity-name.epic {
+  color: #B84DFF;
+}
+
+.rarity-name.legendary {
+  color: #FFD700;
+}
+
+.rarity-name.mythic {
+  color: #FF4D4D;
+}
+
+.rarity-name.gts {
+  background: linear-gradient(
+    110deg,
+    #168CF0 0%,
+    #83B66B 52%,
+    #F5E500 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
 /* LEADERBOARD */
 
 .table {
@@ -788,7 +822,7 @@ main {
       </div>
 
       <div class="headerStat">
-        <span class="headerStatLabel">Best Rarity</span>
+        <span class="headerStatLabel">Best Card</span>
         <span id="bestCount" class="headerStatValue">None</span>
       </div>
     </div>
@@ -1030,13 +1064,18 @@ function bestMember() {
 }
 
 function updateUI() {
-  $("rollCount").textContent = profile?.rolls || 0;
+  $("rollCount").textContent =
+    (Number(profile?.rolls) || 0).toLocaleString();
 
   const best = bestMember();
+  const bestCount = $("bestCount");
 
-  $("bestCount").textContent = best
-    ? `${best.name} (1/${best.odds})`
-    : "None";
+  if (best) {
+    bestCount.innerHTML =
+      `<span class="rarity-name ${rarity(best.odds)}">${escapeHTML(best.name)}</span> (1/${best.odds.toLocaleString()})`;
+  } else {
+    bestCount.textContent = "None";
+  }
 
   $("accountText").textContent = currentUser
     ? profile?.username || currentUser.email || "Player"
@@ -1213,7 +1252,7 @@ async function loadLeaderboard() {
           <th>Rank</th>
           <th>Username</th>
           <th>Rolls</th>
-          <th>Best</th>
+          <th>Best Card</th>
         </tr>
       </thead>
       <tbody>
@@ -1223,14 +1262,14 @@ async function loadLeaderboard() {
           );
 
           const bestText = best
-            ? `${best.name} (1 in ${best.odds.toLocaleString()})`
+            ? `<span class="rarity-name ${rarity(best.odds)}">${escapeHTML(best.name)}</span> (1 in ${best.odds.toLocaleString()})`
             : "None";
 
           return `<tr>
             <td>${i + 1}</td>
             <td>${escapeHTML(u.username || "Player")}</td>
             <td>${(Number(u.rolls) || 0).toLocaleString()}</td>
-            <td>${escapeHTML(bestText)}</td>
+            <td>${bestText}</td>
           </tr>`;
         }).join("")}
       </tbody>

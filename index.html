@@ -1196,7 +1196,7 @@ async function queueProfileSave() {
   unsavedRolls++;
   scheduleProfileSave();
 
-  // Save immediately when the batch reaches 50 rolls.
+  // Save immediately when the batch reaches 10 rolls.
   if (unsavedRolls >= PROFILE_SAVE_BATCH_SIZE) {
     await flushProfileSave();
   }
@@ -1534,6 +1534,13 @@ onAuthStateChanged(auth, async user => {
   currentUser = user;
   profile = null;
 
+  // Clear any pending save timer from the previous session.
+  clearTimeout(profileSaveTimer);
+  profileSaveTimer = null;
+
+  // Reset pending save tracking when switching accounts.
+  unsavedRolls = 0;
+
   $("authPanel").classList.add("hidden");
   $("game").classList.remove("hidden");
   $("headerStats").classList.remove("hidden");
@@ -1553,73 +1560,70 @@ onAuthStateChanged(auth, async user => {
     const ref = doc(db, "users", user.uid);
     const snapshot = await getDoc(ref);
 
-    const existingData = snapshot.exists()
+    // Read guest progress before deciding what to merge.
+    const guestProfile = loadGuestProfile();
+    const guestSaveIsCurrent =
+      guestProfile.progressResetVersion === PROGRESS_RESET_VERSION;
+
+    const savedData = snapshot.exists()
       ? snapshot.data()
       : null;
 
-    // Load the local guest save before switching profiles.
-    const guestProfile = loadGuestProfile();
+    const savedResetVersion = Number(
+      savedData?.progressResetVersion
+    ) || 0;
 
-    // Ignore cloud progress from before the latest reset.
-    const cloudSaveIsCurrent =
-      Number(existingData?.progressResetVersion) ===
-      PROGRESS_RESET_VERSION;
+    // A profile from before the current wipe must start fresh.
+    const accountNeedsReset =
+      snapshot.exists() &&
+      savedResetVersion !== PROGRESS_RESET_VERSION;
 
-    if (snapshot.exists() && cloudSaveIsCurrent) {
-      profile = {
-        ...emptyProfile(
-          existingData.username ||
-          user.email?.split("@")[0] ||
-          "Player"
-        ),
-        ...existingData,
-        rolls: Number(existingData.rolls) || 0,
-        inventory: existingData.inventory || {},
-        progressResetVersion: PROGRESS_RESET_VERSION
-      };
-    } else {
-      // Start fresh if the profile is new or predates the reset.
+    if (!snapshot.exists() || accountNeedsReset) {
       profile = emptyProfile(
-        existingData?.username ||
+        savedData?.username ||
         pendingSignupUsername ||
         user.email?.split("@")[0] ||
         "Player"
       );
+    } else {
+      profile = {
+        ...emptyProfile(
+          savedData.username ||
+          user.email?.split("@")[0] ||
+          "Player"
+        ),
+        ...savedData,
+        rolls: Number(savedData.rolls) || 0,
+        inventory:
+          savedData.inventory &&
+          typeof savedData.inventory === "object"
+            ? savedData.inventory
+            : {},
+        progressResetVersion: PROGRESS_RESET_VERSION
+      };
     }
 
     // Only merge guest progress saved under the current reset version.
-    const guestSaveIsCurrent =
-      guestProfile.progressResetVersion ===
-      PROGRESS_RESET_VERSION;
-
     const guestHasProgress =
       guestSaveIsCurrent &&
       (
-        guestProfile.rolls > 0 ||
-        Object.values(guestProfile.inventory).some(
+        (Number(guestProfile.rolls) || 0) > 0 ||
+        Object.values(guestProfile.inventory || {}).some(
           count => Number(count) > 0
         )
       );
 
     if (guestHasProgress) {
-      profile.rolls =
-        (Number(profile.rolls) || 0) +
-        (Number(guestProfile.rolls) || 0);
+      profile.rolls += Number(guestProfile.rolls) || 0;
 
-      for (const [id, count] of Object.entries(
-        guestProfile.inventory
+      for (const [name, count] of Object.entries(
+        guestProfile.inventory || {}
       )) {
-        profile.inventory[id] =
-          (Number(profile.inventory[id]) || 0) +
+        profile.inventory[name] =
+          (Number(profile.inventory[name]) || 0) +
           (Number(count) || 0);
       }
     }
-
-    // Preserve the existing username.
-    profile.username =
-      existingData?.username ||
-      pendingSignupUsername ||
-      profile.username;
 
     profile.progressResetVersion = PROGRESS_RESET_VERSION;
 
@@ -1627,21 +1631,33 @@ onAuthStateChanged(auth, async user => {
     profile.bestName = best?.name || null;
     profile.bestOdds = best?.odds || 0;
 
-    // Save when creating a profile, migrating an old profile,
-    // or merging valid guest progress.
+    // Write only when creating, resetting, or merging progress.
     const needsProfileSave =
       !snapshot.exists() ||
-      !cloudSaveIsCurrent ||
+      accountNeedsReset ||
       guestHasProgress;
 
     if (needsProfileSave) {
       await saveProfile();
     }
 
-    // Remove outdated guest progress so it cannot be restored later.
+    // Remove the guest save only after the account save succeeds,
+    // or if it is outdated or contains no progress.
+    const guestSaveExists =
+      localStorage.getItem(GUEST_SAVE_KEY) !== null;
+
     if (
-      localStorage.getItem(GUEST_SAVE_KEY) &&
-      (!guestSaveIsCurrent || guestHasProgress)
+      guestSaveExists &&
+      (
+        !guestSaveIsCurrent ||
+        guestHasProgress ||
+        (
+          (Number(guestProfile.rolls) || 0) === 0 &&
+          !Object.values(guestProfile.inventory || {}).some(
+            count => Number(count) > 0
+          )
+        )
+      )
     ) {
       localStorage.removeItem(GUEST_SAVE_KEY);
     }
@@ -1652,14 +1668,16 @@ onAuthStateChanged(auth, async user => {
     updateUI();
     renderInventory();
 
-    // Refresh the leaderboard when the cached data is outdated.
-    leaderboardCache = null;
-
+    // Invalidate the leaderboard cache after a profile change.
+    if (needsProfileSave) {
+      leaderboardCache = null;
+      leaderboardCacheTime = 0;
+    }
   } catch (error) {
-    console.error("Profile load failed:", error);
+    console.error("Profile load/save failed:", error);
 
     $("authMessage").textContent =
-      "Couldn't load or merge your save. Check your connection and try again.";
+      "Couldn't load or save your progress. Check your connection and try again.";
   }
 });
 </script>

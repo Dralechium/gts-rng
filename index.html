@@ -1006,8 +1006,8 @@ let unsavedRolls = 0;
 let profileSaveTimer = null;
 let profileSavePromise = null;
 
-const PROFILE_SAVE_BATCH_SIZE = 10;
-const PROFILE_SAVE_DELAY_MS = 15_000;
+const PROFILE_SAVE_BATCH_SIZE = 50;
+const PROFILE_SAVE_DELAY_MS = 60_000;
 
 const LEADERBOARD_CACHE_MS = 60_000;
 
@@ -1595,6 +1595,12 @@ onAuthStateChanged(auth, async user => {
     // Save account progress before removing the guest save.
     await saveProfile();
 
+    // Only write when creating a profile or merging guest progress.
+    if (!snapshot.exists() || guestHasProgress) {
+      await saveProfile();
+    }
+    
+    // Remove the guest save only after its progress has been saved.
     if (guestHasProgress) {
       localStorage.removeItem(GUEST_SAVE_KEY);
     }

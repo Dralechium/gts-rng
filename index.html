@@ -1196,7 +1196,7 @@ async function queueProfileSave() {
   unsavedRolls++;
   scheduleProfileSave();
 
-  // Save immediately when the batch reaches 10 rolls.
+  // Save immediately when the batch reaches 50 rolls.
   if (unsavedRolls >= PROFILE_SAVE_BATCH_SIZE) {
     await flushProfileSave();
   }
@@ -1541,7 +1541,6 @@ onAuthStateChanged(auth, async user => {
   $("logoutButton").classList.toggle("hidden", !user);
 
   if (!user) {
-    // Start or resume the local guest save after logout.
     profile = loadGuestProfile();
 
     $("accountText").textContent = "Guest";
@@ -1554,83 +1553,45 @@ onAuthStateChanged(auth, async user => {
     const ref = doc(db, "users", user.uid);
     const snapshot = await getDoc(ref);
 
-    // Capture guest progress before changing the active profile.
+    const existingData = snapshot.exists()
+      ? snapshot.data()
+      : null;
+
+    // Load the local guest save before switching profiles.
     const guestProfile = loadGuestProfile();
 
-    if (snapshot.exists()) {
+    // Ignore cloud progress from before the latest reset.
+    const cloudSaveIsCurrent =
+      Number(existingData?.progressResetVersion) ===
+      PROGRESS_RESET_VERSION;
+
+    if (snapshot.exists() && cloudSaveIsCurrent) {
       profile = {
-        ...emptyProfile(user.email?.split("@")[0] || "Player"),
-        ...snapshot.data(),
-        rolls: Number(snapshot.data().rolls) || 0,
-        inventory: snapshot.data().inventory || {}
+        ...emptyProfile(
+          existingData.username ||
+          user.email?.split("@")[0] ||
+          "Player"
+        ),
+        ...existingData,
+        rolls: Number(existingData.rolls) || 0,
+        inventory: existingData.inventory || {},
+        progressResetVersion: PROGRESS_RESET_VERSION
       };
     } else {
+      // Start fresh if the profile is new or predates the reset.
       profile = emptyProfile(
+        existingData?.username ||
         pendingSignupUsername ||
         user.email?.split("@")[0] ||
         "Player"
       );
     }
 
-    // Merge guest progress into the account exactly once.
-    const guestHasProgress =
-      guestProfile.rolls > 0 ||
-      Object.values(guestProfile.inventory).some(
-        count => Number(count) > 0
-      );
-
-    if (guestHasProgress) {
-      profile.rolls =
-        (Number(profile.rolls) || 0) +
-        (Number(guestProfile.rolls) || 0);
-
-      for (const [id, count] of Object.entries(guestProfile.inventory)) {
-        profile.inventory[id] =
-          (Number(profile.inventory[id]) || 0) +
-          (Number(count) || 0);
-      }
-    }
-
-    profile.username =
-      snapshot.exists()
-        ? (snapshot.data().username || profile.username)
-        : profile.username;
-
-    profile.bestName = bestMember()?.name || null;
-    profile.bestOdds = bestMember()?.odds || 0;
-
-    // Save account progress before removing the guest save.
-    await saveProfile();
-
-    // Only write when creating a profile or merging guest progress.
-    if (!snapshot.exists() || guestHasProgress) {
-      await saveProfile();
-    }
-    
-    // Load the guest save and reject saves from before the latest reset.
-    const guestProfile = loadGuestProfile();
-    
-    if (snapshot.exists()) {
-      profile = {
-        ...emptyProfile(user.email?.split("@")[0] || "Player"),
-        ...snapshot.data(),
-        rolls: Number(snapshot.data().rolls) || 0,
-        inventory: snapshot.data().inventory || {},
-        progressResetVersion:
-          Number(snapshot.data().progressResetVersion) || 0
-      };
-    } else {
-      profile = emptyProfile(
-        pendingSignupUsername ||
-        user.email?.split("@")[0] ||
-        "Player"
-      );
-    }
-    
-    // Only merge guest progress created after the current reset.
+    // Only merge guest progress saved under the current reset version.
     const guestSaveIsCurrent =
-      guestProfile.progressResetVersion === PROGRESS_RESET_VERSION;
-    
+      guestProfile.progressResetVersion ===
+      PROGRESS_RESET_VERSION;
+
     const guestHasProgress =
       guestSaveIsCurrent &&
       (
@@ -1639,46 +1600,49 @@ onAuthStateChanged(auth, async user => {
           count => Number(count) > 0
         )
       );
-    
+
     if (guestHasProgress) {
       profile.rolls =
         (Number(profile.rolls) || 0) +
         (Number(guestProfile.rolls) || 0);
-    
-      for (const [id, count] of Object.entries(guestProfile.inventory)) {
+
+      for (const [id, count] of Object.entries(
+        guestProfile.inventory
+      )) {
         profile.inventory[id] =
           (Number(profile.inventory[id]) || 0) +
           (Number(count) || 0);
       }
     }
-    
-    profile.username = snapshot.exists()
-      ? (snapshot.data().username || profile.username)
-      : profile.username;
-    
+
+    // Preserve the existing username.
+    profile.username =
+      existingData?.username ||
+      pendingSignupUsername ||
+      profile.username;
+
     profile.progressResetVersion = PROGRESS_RESET_VERSION;
-    
+
     const best = bestMember();
     profile.bestName = best?.name || null;
     profile.bestOdds = best?.odds || 0;
-    
-    // Save only if the profile needs creating, migration, or guest merging.
+
+    // Save when creating a profile, migrating an old profile,
+    // or merging valid guest progress.
     const needsProfileSave =
       !snapshot.exists() ||
-      guestHasProgress ||
-      Number(snapshot.data()?.progressResetVersion) !== PROGRESS_RESET_VERSION;
-    
+      !cloudSaveIsCurrent ||
+      guestHasProgress;
+
     if (needsProfileSave) {
       await saveProfile();
     }
-    
-    // Remove old guest saves so they cannot restore pre-reset progress.
+
+    // Remove outdated guest progress so it cannot be restored later.
     if (
       localStorage.getItem(GUEST_SAVE_KEY) &&
-      !guestSaveIsCurrent
+      (!guestSaveIsCurrent || guestHasProgress)
     ) {
-      localStorage.removeItem(GUEST_SAVE_KEY);
-    } else if (guestHasProgress) {
       localStorage.removeItem(GUEST_SAVE_KEY);
     }
 
@@ -1687,8 +1651,12 @@ onAuthStateChanged(auth, async user => {
     $("authMessage").textContent = "";
     updateUI();
     renderInventory();
+
+    // Refresh the leaderboard when the cached data is outdated.
+    leaderboardCache = null;
+
   } catch (error) {
-    console.error(error);
+    console.error("Profile load failed:", error);
 
     $("authMessage").textContent =
       "Couldn't load or merge your save. Check your connection and try again.";

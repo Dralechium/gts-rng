@@ -1011,6 +1011,9 @@ const PROFILE_SAVE_DELAY_MS = 60_000;
 
 const LEADERBOARD_CACHE_MS = 60_000;
 
+// Increase this number whenever you perform a full progress reset.
+const PROGRESS_RESET_VERSION = 1;
+
 const GUEST_SAVE_KEY = "gtsRngGuestSave";
 
 function emptyProfile(username = "Guest") {
@@ -1019,7 +1022,8 @@ function emptyProfile(username = "Guest") {
     rolls: 0,
     inventory: {},
     bestName: null,
-    bestOdds: 0
+    bestOdds: 0,
+    progressResetVersion: PROGRESS_RESET_VERSION
   };
 }
 
@@ -1035,7 +1039,8 @@ function loadGuestProfile() {
         ...data,
         username: "Guest",
         rolls: Number(data.rolls) || 0,
-        inventory: data.inventory || {}
+        inventory: data.inventory || {},
+        progressResetVersion: Number(data.progressResetVersion) || 0
       };
     }
   } catch (error) {
@@ -1052,7 +1057,8 @@ function saveGuestProfile() {
     GUEST_SAVE_KEY,
     JSON.stringify({
       rolls: profile.rolls || 0,
-      inventory: profile.inventory || {}
+      inventory: profile.inventory || {},
+      progressResetVersion: PROGRESS_RESET_VERSION
     })
   );
 }
@@ -1117,6 +1123,7 @@ async function saveProfile() {
     inventory: profile.inventory,
     bestName: best?.name || null,
     bestOdds: best?.odds || 0,
+    progressResetVersion: PROGRESS_RESET_VERSION,
     updatedAt: serverTimestamp()
   });
 }
@@ -1600,8 +1607,78 @@ onAuthStateChanged(auth, async user => {
       await saveProfile();
     }
     
-    // Remove the guest save only after its progress has been saved.
+    // Load the guest save and reject saves from before the latest reset.
+    const guestProfile = loadGuestProfile();
+    
+    if (snapshot.exists()) {
+      profile = {
+        ...emptyProfile(user.email?.split("@")[0] || "Player"),
+        ...snapshot.data(),
+        rolls: Number(snapshot.data().rolls) || 0,
+        inventory: snapshot.data().inventory || {},
+        progressResetVersion:
+          Number(snapshot.data().progressResetVersion) || 0
+      };
+    } else {
+      profile = emptyProfile(
+        pendingSignupUsername ||
+        user.email?.split("@")[0] ||
+        "Player"
+      );
+    }
+    
+    // Only merge guest progress created after the current reset.
+    const guestSaveIsCurrent =
+      guestProfile.progressResetVersion === PROGRESS_RESET_VERSION;
+    
+    const guestHasProgress =
+      guestSaveIsCurrent &&
+      (
+        guestProfile.rolls > 0 ||
+        Object.values(guestProfile.inventory).some(
+          count => Number(count) > 0
+        )
+      );
+    
     if (guestHasProgress) {
+      profile.rolls =
+        (Number(profile.rolls) || 0) +
+        (Number(guestProfile.rolls) || 0);
+    
+      for (const [id, count] of Object.entries(guestProfile.inventory)) {
+        profile.inventory[id] =
+          (Number(profile.inventory[id]) || 0) +
+          (Number(count) || 0);
+      }
+    }
+    
+    profile.username = snapshot.exists()
+      ? (snapshot.data().username || profile.username)
+      : profile.username;
+    
+    profile.progressResetVersion = PROGRESS_RESET_VERSION;
+    
+    const best = bestMember();
+    profile.bestName = best?.name || null;
+    profile.bestOdds = best?.odds || 0;
+    
+    // Save only if the profile needs creating, migration, or guest merging.
+    const needsProfileSave =
+      !snapshot.exists() ||
+      guestHasProgress ||
+      Number(snapshot.data()?.progressResetVersion) !== PROGRESS_RESET_VERSION;
+    
+    if (needsProfileSave) {
+      await saveProfile();
+    }
+    
+    // Remove old guest saves so they cannot restore pre-reset progress.
+    if (
+      localStorage.getItem(GUEST_SAVE_KEY) &&
+      !guestSaveIsCurrent
+    ) {
+      localStorage.removeItem(GUEST_SAVE_KEY);
+    } else if (guestHasProgress) {
       localStorage.removeItem(GUEST_SAVE_KEY);
     }
 
